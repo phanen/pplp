@@ -1,16 +1,21 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-
 #include <chrono>
 #include <iostream>
 #include <set>
 #include <vector>
 
-#define dbg
-#include "dbg.h" 
 #include "seal/seal.h"
+#include "dbg.h"
 #include "examples.h"
 #include "bloomfilter.h"
+
+
+
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
 
 using namespace std;
 using namespace seal;
@@ -28,8 +33,34 @@ get_bitlen (uint64_t x)
 void
 pplp (int th_)
 {
-  // debug
-  Plaintext pdbg;
+
+	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if(sockfd < 0){
+		perror("socket"); return -1;
+	}
+	printf("socket create success..................\n");
+
+  struct sockaddr_in myaddr;
+	memset(&myaddr, 0, sizeof(myaddr));
+	myaddr.sin_family = AF_INET;
+	myaddr.sin_port	= htons(6666);
+	myaddr.sin_addr.s_addr = inet_addr("127.0.0.1"); 
+	int ret = bind(sockfd, (struct sockaddr*)&myaddr, sizeof(myaddr));
+	if(ret < 0){
+		perror("bind:"); goto SOCK_ERR;
+	}
+  // 
+  ret = listen(sockfd, 8);
+	if(ret < 0){
+		perror("listen:"); goto SOCK_ERR;
+	}
+	printf("listen...............\n");
+  //
+	int connfd = accept(sockfd, NULL, NULL);
+	if(connfd < 0){
+		perror("accept:"); goto SOCK_ERR;
+	}
+
   // A
   uint64_t xa = 217;
   uint64_t ya = 201;
@@ -44,26 +75,32 @@ pplp (int th_)
   uint64_t sq_threshold = th * th;
   uint64_t plain_modulus_bit_count = 33; // 56
 
-  cout << "A's horizontal coordinates:\t" << xa << endl;
-  cout << "A's vertical coordinates:\t" << ya << endl;
   cout << "B's horizontal coordinates:\t" << xb << endl;
   cout << "B's vertical coordinates:\t" << yb << endl;
-  cout << "radius(threshold):\t" << th << endl;
+  cout << "Radius(Threshold):\t" << th << endl;
 
   auto begin = std::chrono::high_resolution_clock::now ();
-  // A ---------------------- KeyGen
-  EncryptionParameters parms (scheme_type::bfv);
-  size_t poly_modulus_degree = 4096; // 4096 * 8
-  uint64_t plain_modulus = 1ull << plain_modulus_bit_count;
-  parms.set_poly_modulus_degree (poly_modulus_degree);
-  parms.set_coeff_modulus (CoeffModulus::BFVDefault (poly_modulus_degree));
-  parms.set_plain_modulus (plain_modulus); // 0 -- 10, sq: 0 -- 100
 
-  SEALContext context (parms);
+  
+	char buf[1 << 15];
+	memset(buf, 0, sizeof(buf));
+	ret = read(connfd, buf, sizeof(buf));
+	if(ret < 0){
+		perror("read:"); break;
+	}
+  else if(ret == 0){
+		printf("write close!\n"); break;
+	}
+  else{
+		printf("recv:%s\n", buf);
+	}
+
+  SEALContext context;
+  context = (SEALContext*)buf;
   print_parameters(context);
   cout << "Parameter validation (success): " << context.parameter_error_message() << endl;
   
-  KeyGenerator keygen (context);
+  // KeyGenerator keygen (context);
   SecretKey secret_key = keygen.secret_key ();
   PublicKey public_key;
   keygen.create_public_key (public_key);
@@ -96,11 +133,11 @@ pplp (int th_)
 
   Ciphertext cr;
   encryptor.encrypt (Plaintext (uint64_to_hex_string (r * s)), cr);
-  dbg_pc (cr, "cr: ");
+//   dbg_pc (cr, "cr: ");
 
   // A ---------------
   uint64_t u = xa * xa + ya * ya;
-  // dbg_pp (u, "u: ");
+  dbg_pp (u, "u: ");
 
   Ciphertext c1, c2, c3;
   Plaintext p1 (uint64_to_hex_string (u));
@@ -111,9 +148,9 @@ pplp (int th_)
   encryptor.encrypt (p1, c1);
   encryptor.encrypt (p2, c2);
   encryptor.encrypt (p3, c3);
-  dbg_pc (c1, "c1: ");
-  dbg_pc (c2, "c2: ");
-  dbg_pc (c3, "c3: ");
+//   dbg_pc (c1, "c1: ");
+//   dbg_pc (c2, "c2: ");
+//   dbg_pc (c3, "c3: ");
 
   // B ---------------------
   uint64_t z = xb * xb + yb * yb;
@@ -130,13 +167,13 @@ pplp (int th_)
   cout << "    + size of freshly encrypted x: " << c3.size() << endl;
 
   evaluator.add_inplace (c2, c3);
-  dbg_pc (c1, "c1: ");
-  dbg_pc (c2, "c2: ");
+//   dbg_pc (c1, "c1: ");
+//   dbg_pc (c2, "c2: ");
   evaluator.sub (c1, c2, cd);
-  dbg_pc (cd, "cd: ");
+//   dbg_pc (cd, "cd: ");
 
   evaluator.multiply_plain_inplace (cd, Plaintext (uint64_to_hex_string (s)));
-  dbg_pc (cd, "cd: ");
+//   dbg_pc (cd, "cd: ");
   evaluator.add_inplace (cd, cr);
   dbg_pc (cd, "cd: ");
 
@@ -164,4 +201,12 @@ pplp (int th_)
   cout << (isNear ? "near" : "far") << endl;
   printf ("Time measured: %.3f seconds.\n", elapsed.count () * 1e-9);
   cout << endl;
+
+
+  close(sockfd);
+	close(connfd);
+	return 0;
+SOCK_ERR:
+	close(sockfd);
+	return -1;
 }

@@ -2,6 +2,6 @@
 
 # To Do
 
-- [ ] Implement Hash Function
+- [ ] Implementing Hash Function
 - [ ] Refactoring Bloom Filter
-- [ ] C/S demo 
+- [ ] Implementing C/S demo 

@@ -8,9 +8,6 @@ int bf_test();
 void pplp(int th_);
 
 int main() {
-
-	//example_bfv_basics();
-	//example_encoders();
 	//bf_test();
     pplp(4096);
     //xxx();
@@ -29,7 +26,6 @@ int main() {
     //    pplp(th_lst[i]);
     //}
 
-	//xxx();
 }
 
 

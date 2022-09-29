@@ -1,35 +1,53 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-
 #include <chrono>
 #include <iostream>
 #include <set>
 #include <vector>
 
-#define dbg
-#include "dbg.h" 
-#include "seal/seal.h"
+#include "header.h"
+#include "dbg.h"
 #include "examples.h"
 #include "bloomfilter.h"
+#include "seal/seal.h"
+
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 using namespace std;
 using namespace seal;
 
-int
-get_bitlen (uint64_t x)
-{
-  // 0 is 1 bit...
-  int ret = 1;
-  while (x >>= 1)
-    ++ret;
-  return ret;
-}
+// 大概是因为 plain_modulus 取的太大, noise budget 就变小了
+// 结论就是
+// plain_modulus 太小 A 的坐标就不能太大
+// plain_modulus 太大 B 的坐标就不能太大
+
+// 解决办法是增大 poly_modulus_degree, 代价是变慢
+
 
 void
 pplp (int th_)
 {
-  // debug
-  Plaintext pdbg;
+ 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if(sockfd < 0){
+		perror("socket:"); return -1;
+	}
+	printf("client socket create success........\n");
+
+	struct sockaddr_in srvaddr;
+	memset(&srvaddr, 0, sizeof(srvaddr));
+	srvaddr.sin_family = AF_INET;
+	srvaddr.sin_port = htons(6666);
+	srvaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	int ret = connect(sockfd, (struct sockaddr*)&srvaddr, sizeof(srvaddr));
+	if(ret < 0){
+		perror("connect"); close(sockfd); return -1;
+	}
+
+
+
   // A
   uint64_t xa = 217;
   uint64_t ya = 201;
@@ -48,9 +66,11 @@ pplp (int th_)
   cout << "A's vertical coordinates:\t" << ya << endl;
   cout << "B's horizontal coordinates:\t" << xb << endl;
   cout << "B's vertical coordinates:\t" << yb << endl;
-  cout << "radius(threshold):\t" << th << endl;
+  cout << "Radius(Threshold):\t" << th << endl;
 
   auto begin = std::chrono::high_resolution_clock::now ();
+
+
   // A ---------------------- KeyGen
   EncryptionParameters parms (scheme_type::bfv);
   size_t poly_modulus_degree = 4096; // 4096 * 8
@@ -62,7 +82,18 @@ pplp (int th_)
   SEALContext context (parms);
   print_parameters(context);
   cout << "Parameter validation (success): " << context.parameter_error_message() << endl;
+
+
   
+  char buf[1024];
+	printf("send: ");
+	fgets(buf, sizeof(buf), stdin);
+	ret = write(sockfd, buf, sizeof(buf));
+	if(ret < 0){
+		perror("write"); break;
+	}
+
+
   KeyGenerator keygen (context);
   SecretKey secret_key = keygen.secret_key ();
   PublicKey public_key;
@@ -100,7 +131,7 @@ pplp (int th_)
 
   // A ---------------
   uint64_t u = xa * xa + ya * ya;
-  // dbg_pp (u, "u: ");
+  dbg_pp (u, "u: ");
 
   Ciphertext c1, c2, c3;
   Plaintext p1 (uint64_to_hex_string (u));
@@ -153,15 +184,13 @@ pplp (int th_)
   auto elapsed
       = std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin);
 
-  
-  // //输出该密文的多项式个数
-  //cout << "    + size of freshly encrypted x: " << c2.size() << endl;
-  // //输出该密文还剩下的噪声预算
-  //cout << "    + noise budget in freshly encrypted x: " << decryptor.invariant_noise_budget(c2) << " bits"
-  //    << endl;
-
 
   cout << (isNear ? "near" : "far") << endl;
   printf ("Time measured: %.3f seconds.\n", elapsed.count () * 1e-9);
   cout << endl;
+
+
+  close(sockfd);
+	return 0;
+
 }
