@@ -22,14 +22,14 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(SEAL 4.0 REQUIRED)
 
 add_executable(pplp src/main.cc src/demo.cc)
-add_executable(client src/client.cc)
-add_executable(server src/server.cc)
+# add_executable(client src/client.cc)
+# add_executable(server src/server.cc)
 
-target_include_directories(client PRIVATE ./include)
-target_link_libraries(client PRIVATE SEAL::seal)
+# target_include_directories(client PRIVATE ./include)
+# target_link_libraries(client PRIVATE SEAL::seal)
 
-target_include_directories(server PRIVATE ./include)
-target_link_libraries(server PRIVATE SEAL::seal)
+# target_include_directories(server PRIVATE ./include)
+# target_link_libraries(server PRIVATE SEAL::seal)
 
 target_include_directories(pplp PRIVATE ./include)
 target_link_libraries(pplp PRIVATE SEAL::seal)
