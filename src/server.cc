@@ -6,210 +6,243 @@
 #include <vector>
 
 #include "seal/seal.h"
-#include "dbg.h"
-#include "examples.h"
+#include "util.h"
 #include "bloomfilter.h"
+#include "examples.h"
 
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <netdb.h>
+
+constexpr int SIZE_BUFFER = 8192;
+constexpr const char *STOP_MSG = "STOP";
 
 using namespace std;
 using namespace seal;
 
-int get_bitlen(uint64_t x)
+void bytes_to_send(int sockfd, std::size_t bytes)
 {
-  // 0 is 1 bit...
-  int ret = 1;
-  while (x >>= 1)
-    ++ret;
-  return ret;
+  std::string dataToSend = std::to_string(bytes);
+  uint8_t buf[SIZE_BUFFER];
+  send(sockfd, dataToSend.c_str(), dataToSend.length(), 0);
+  recv(sockfd, buf, SIZE_BUFFER, 0);
 }
 
-void pplp(int th_)
+std::size_t bytes_to_receive(int sockfd)
 {
+  char buf[SIZE_BUFFER];
+  recv(sockfd, buf, SIZE_BUFFER, 0);
+  std::size_t bytes = std::stoull(buf);
+  send(sockfd, STOP_MSG, (unsigned)strlen(STOP_MSG), 0);
+  return bytes;
+}
 
-  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sockfd < 0)
+int main()
+{
+  uint64_t xa = 217;
+  uint64_t ya = 201;
+  uint64_t xb = 201;
+  uint64_t yb = 200;
+  uint64_t z = xb * xb + yb * yb;
+  uint64_t th = 16;
+  uint64_t sq_threshold = th * th;
+
+  cout << "Server's horizontal coordinates:\t" << xb << endl;
+  cout << "Server's vertical coordinates:\t" << yb << endl;
+  cout << "Radius(Threshold):\t" << th << endl;
+
+  // crete a socket
+  int sockfd_listening = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd_listening < 0)
   {
     perror("socket");
     return -1;
   }
   printf("socket create success..................\n");
 
-  struct sockaddr_in myaddr;
+  // bind the ip address and port to a socket
+  sockaddr_in myaddr;
   memset(&myaddr, 0, sizeof(myaddr));
   myaddr.sin_family = AF_INET;
-  myaddr.sin_port = htons(6666);
+  myaddr.sin_port = htons(31022);
   myaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  int ret = bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr));
+  int ret = bind(sockfd_listening, (struct sockaddr *)&myaddr, sizeof(myaddr));
   if (ret < 0)
   {
     perror("bind:");
-    goto SOCK_ERR;
+    return -1;
   }
-  //
-  ret = listen(sockfd, 8);
+
+  // socket is for listening
+  ret = listen(sockfd_listening, 8);
   if (ret < 0)
   {
     perror("listen:");
-    goto SOCK_ERR;
+    return -1;
   }
   printf("listen...............\n");
-  //
-  int connfd = accept(sockfd, NULL, NULL);
-  if (connfd < 0)
+
+  // wait for a connection
+  sockaddr_in sockaddr_client;
+  unsigned sz_client = sizeof(sockaddr_client);
+  int sockfd_client = accept(sockfd_listening, (sockaddr *)&sockaddr_client, (socklen_t *)&sz_client);
+  if (sockfd_client < 0)
   {
     perror("accept:");
-    goto SOCK_ERR;
+    return -1;
   }
 
-  // A
-  uint64_t xa = 217;
-  uint64_t ya = 201;
-  uint64_t xb = 201;
-  uint64_t yb = 200;
-  // uint64_t ya = 32123123;
-  // uint64_t xa = 32123124;
-  // uint64_t xb = 31005421;
-  // uint64_t yb = 31005321;
+  // stop listening
+  close(sockfd_listening);
 
-  uint64_t th = 16;
-  uint64_t sq_threshold = th * th;
-  uint64_t plain_modulus_bit_count = 33; // 56
+  // print host:port of client
+  char host[NI_MAXHOST];
+  char serv[NI_MAXHOST];
+  memset(host, 0, sizeof(host));
+  memset(serv, 0, sizeof(serv));
 
-  cout << "B's horizontal coordinates:\t" << xb << endl;
-  cout << "B's vertical coordinates:\t" << yb << endl;
-  cout << "Radius(Threshold):\t" << th << endl;
-
-  auto begin = std::chrono::high_resolution_clock::now();
-
-  char buf[1 << 15];
-  memset(buf, 0, sizeof(buf));
-  ret = read(connfd, buf, sizeof(buf));
-  if (ret < 0)
+  if (getnameinfo((sockaddr *)&sockaddr_client, sizeof(sockaddr_client), host, NI_MAXHOST, serv, NI_MAXSERV, 0) == 0)
   {
-    perror("read:");
-    break;
-  }
-  else if (ret == 0)
-  {
-    printf("write close!\n");
-    break;
+    std::cout << host << " : " << serv << std::endl;
   }
   else
   {
-    printf("recv:%s\n", buf);
+    inet_ntop(AF_INET, &sockaddr_client.sin_addr, host, NI_MAXHOST);
+    std::cout << host << " : " << ntohs(sockaddr_client.sin_port) << std::endl;
   }
 
-  SEALContext context;
-  context = (SEALContext *)buf;
+  uint8_t buf[SIZE_BUFFER];
+  auto begin = std::chrono::high_resolution_clock::now();
+
+  // set the parms
+  EncryptionParameters parms(scheme_type::bfv);
+  size_t poly_modulus_degree = 4096;     // 4096 * 8
+  uint64_t plain_modulus_bit_count = 33; // 56
+  uint64_t plain_modulus = 1ull << plain_modulus_bit_count;
+  parms.set_poly_modulus_degree(poly_modulus_degree);
+  parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
+  parms.set_plain_modulus(plain_modulus); // 0 -- 10, sq: 0 -- 100
+
+  // create the context
+  SEALContext context(parms);
   print_parameters(context);
   cout << "Parameter validation (success): " << context.parameter_error_message() << endl;
 
-  // KeyGenerator keygen (context);
-  SecretKey secret_key = keygen.secret_key();
-  PublicKey public_key;
-  keygen.create_public_key(public_key);
+  // send the parms(context) to the client
+  std::stringstream stream_parms;
+  parms.save(stream_parms);
+  ssize_t bytes = send(sockfd_client, stream_parms.str().c_str(), stream_parms.str().length(), 0);
+  std::cout << "Send parms(context) to the client, bytes: " << bytes << std::endl;
 
-  Encryptor encryptor(context, public_key);
-  Evaluator evaluator(context);
-  Decryptor decryptor(context, secret_key);
-  RelinKeys relin_keys;
-  keygen.create_relin_keys(relin_keys);
+  // receive the pk from the client
+  std::stringstream stream_pk;
+  bytes = bytes_to_receive(sockfd_client);
+  ssize_t sz_tmp = bytes;
+  do
+  {
+    memset(buf, 0, sizeof(buf));
+    ssize_t cur_bytes = recv(sockfd_client, buf, sizeof(buf), 0);
+    stream_pk << std::string((char *)buf, cur_bytes);
+    bytes -= cur_bytes;
+  } while (bytes != 0);
+  std::cout << "Receive the public key from the client, bytes: " << bytes << std::endl;
+  PublicKey pk;
+  pk.load(context, stream_pk);
 
-  // B ---------------------- BF Insert
-  // initialize bloom filter
+  // set the bloom filter
   bloom_parameters bf_parms;
   bf_parms.projected_element_count = sq_threshold;
   bf_parms.false_positive_probability = 0.0001; // 1 in 10000
   bf_parms.random_seed = 0xA5A5A5A5;
   bf_parms.compute_optimal_parameters();
   bloom_filter bf(bf_parms);
-  // insert key-hashed blind distance
+
+  // generate the random number
   uint64_t r = 13, s = 17, w = 11;
   int w_len = get_bitlen(w);
-
+  // insert key-hashed blind distance
   for (uint64_t di = 0; di < sq_threshold; ++di)
   {
     uint64_t bd = s * (di + r);
-    // cout << bd << ' ';
     bf.insert((bd << uint64_t(w_len)) | w);
   }
-  // cout << endl;
 
-  Ciphertext cr;
-  encryptor.encrypt(Plaintext(uint64_to_hex_string(r * s)), cr);
-  //   dbg_pc (cr, "cr: ");
+  // send the bloom filter
+  std::string dataToSend = std::to_string(bytes);
+  uint8_t buf[SIZE_BUFFER];
+  send(sockfd, dataToSend.c_str(), dataToSend.length(), 0);
+  recv(sockfd, buf, SIZE_BUFFER, 0);
 
-  // A ---------------
-  uint64_t u = xa * xa + ya * ya;
-  dbg_pp(u, "u: ");
+  // send the random pad
+  std::string str_w = std::to_string(w);
+  send(sockfd, str_w.c_str(), str_w.length(), 0);
+  recv(sockfd, buf, SIZE_BUFFER, 0);
 
-  Ciphertext c1, c2, c3;
-  Plaintext p1(uint64_to_hex_string(u));
-  Plaintext p2(uint64_to_hex_string(xa << 1));
-  Plaintext p3(uint64_to_hex_string(ya << 1));
-  cout << p1.to_string() << endl;
-  cout << hex << u << endl;
-  encryptor.encrypt(p1, c1);
-  encryptor.encrypt(p2, c2);
-  encryptor.encrypt(p3, c3);
-  //   dbg_pc (c1, "c1: ");
-  //   dbg_pc (c2, "c2: ");
-  //   dbg_pc (c3, "c3: ");
+  // reveive the encrypted data from the client
+  std::vector<Ciphertext> lst_cipher;
+  bytes = bytes_to_receive(sockfd_client);
+  size_t num_cipher = 3;
+  for (size_t id_cipher = 0; id_cipher < num_cipher; id_cipher++)
+  {
+    Ciphertext cipher_tmp;
+    std::stringstream stream_cipher;
+    ssize_t sz_tmp = bytes;
+    while (bytes != 0)
+    {
+      memset(buf, 0, sizeof(buf));
+      ssize_t cur_bytes = recv(sockfd_client, buf, sizeof(buf), 0);
+      stream_cipher << std::string((char *)buf, cur_bytes);
+      bytes -= cur_bytes;
+    }
+    cipher_tmp.load(context, stream_cipher);
+    lst_cipher.push_back(cipher_tmp);
+    std::cout << "Receive the ciphertext " << id_cipher + 1 << "from the client, bytes: " << sz_tmp << std::endl;
+  }
 
-  // B ---------------------
-  uint64_t z = xb * xb + yb * yb;
-  Ciphertext cz, cd;
-  Plaintext pz(uint64_to_hex_string(z));
-  Plaintext pxb(uint64_to_hex_string(xb));
-  Plaintext pyb(uint64_to_hex_string(yb));
-  encryptor.encrypt(pz, cz);
+  //  homomorphic evaluation
+  Evaluator evaluator(context);
+  Plaintext plain_z(uint64_to_hex_string(z));
+  Plaintext plain_xb(uint64_to_hex_string(xb));
+  Plaintext plain_yb(uint64_to_hex_string(yb));
+  evaluator.add_plain_inplace(lst_cipher[0], plain_z);
+  evaluator.multiply_plain_inplace(lst_cipher[1], plain_xb);
+  evaluator.multiply_plain_inplace(lst_cipher[2], plain_yb);
+  evaluator.add_inplace(lst_cipher[1], lst_cipher[2]);
+  evaluator.sub_inplace(lst_cipher[0], lst_cipher[1]);
+  evaluator.multiply_plain_inplace(lst_cipher[0], Plaintext(uint64_to_hex_string(s)));
+  evaluator.add_plain_inplace(lst_cipher[0], Plaintext(uint64_to_hex_string(s * r)));
 
-  evaluator.add_inplace(c1, cz);
-  evaluator.multiply_plain_inplace(c2, pxb);
-  evaluator.multiply_plain_inplace(c3, pyb);
-  cout << "    + size of freshly encrypted x: " << c2.size() << endl;
-  cout << "    + size of freshly encrypted x: " << c3.size() << endl;
+  // send the encrypted blind distance
+  std::stringstream stream_cipher;
+  lst_cipher[0].save(stream_cipher);
+  bytes_to_send(sockfd_client, stream_cipher.str().length());
+  bytes = send(sockfd_client, stream_cipher.str().c_str(), stream_cipher.str().length(), 0);
+  std::cout << "Send the encrypted blind distance to the client, bytes sent : " << bytes << std::endl;
 
-  evaluator.add_inplace(c2, c3);
-  //   dbg_pc (c1, "c1: ");
-  //   dbg_pc (c2, "c2: ");
-  evaluator.sub(c1, c2, cd);
-  //   dbg_pc (cd, "cd: ");
-
-  evaluator.multiply_plain_inplace(cd, Plaintext(uint64_to_hex_string(s)));
-  //   dbg_pc (cd, "cd: ");
-  evaluator.add_inplace(cd, cr);
-  dbg_pc(cd, "cd: ");
-
-  // A ----------------------
-  Plaintext p_dis;
-  decryptor.decrypt(cd, p_dis);
-
-  cout << p_dis.to_string() << endl;
-  uint64_t i_dis = hex_string_to_uint(p_dis.to_string());
-  cout << "blind_distance: " << i_dis << endl;
-
-  bool isNear = bf.contains((i_dis << uint64_t(w_len)) | w);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
 
-  // //输出该密文的多项式个数
-  // cout << "    + size of freshly encrypted x: " << c2.size() << endl;
-  // //输出该密文还剩下的噪声预算
-  // cout << "    + noise budget in freshly encrypted x: " << decryptor.invariant_noise_budget(c2) << " bits"
-  //    << endl;
-
-  cout << (isNear ? "near" : "far") << endl;
   printf("Time measured: %.3f seconds.\n", elapsed.count() * 1e-9);
-  cout << endl;
-
-  close(sockfd);
-  close(connfd);
+  close(sockfd_client);
   return 0;
-SOCK_ERR:
-  close(sockfd);
-  return -1;
 }
+
+// char buf[1 << 15];
+// memset(buf, 0, sizeof(buf));
+// ret = read(sockfd_client, buf, sizeof(buf));
+
+// if (ret < 0)
+// {
+//   perror("read:");
+//   break;
+// }
+// else if (ret == 0)
+// {
+//   printf("write close!\n");
+//   break;
+// }
+// else
+// {
+//   printf("recv:%s\n", buf);
+// }
