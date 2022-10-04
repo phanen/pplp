@@ -5,187 +5,181 @@
 #include <set>
 #include <vector>
 
-#include "header.h"
-#include "dbg.h"
-#include "examples.h"
-#include "bloomfilter.h"
 #include "seal/seal.h"
+#include "util.h"
+#include "bloomfilter.h"
+#include "examples.h"
 
-#include <sys/socket.h>
-#include <sys/types.h>
+#include <unistd.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+constexpr int SIZE_BUFFER = 8192;
+constexpr const char *STOP_MSG = "STOP";
+
+void bytes_to_send(int sockfd, std::size_t bytes)
+{
+  std::string dataToSend = std::to_string(bytes);
+  uint8_t buf[SIZE_BUFFER];
+  send(sockfd, dataToSend.c_str(), dataToSend.length(), 0);
+  recv(sockfd, buf, SIZE_BUFFER, 0);
+}
+
+std::size_t bytes_to_receive(int sockfd)
+{
+  char buf[SIZE_BUFFER];
+  recv(sockfd, buf, SIZE_BUFFER, 0);
+  std::size_t bytes = std::stoull(buf);
+  send(sockfd, STOP_MSG, (unsigned)strlen(STOP_MSG), 0);
+  return bytes;
+}
 
 using namespace std;
 using namespace seal;
 
-// 大概是因为 plain_modulus 取的太大, noise budget 就变小了
-// 结论就是
-// plain_modulus 太小 A 的坐标就不能太大
-// plain_modulus 太大 B 的坐标就不能太大
+// larger plain_modulus, smaller noise budget
+// small plain_modulus restrict A
+// large plain_modulus restrict B
+// solution: large poly_modulus_degree, but slow
 
-// 解决办法是增大 poly_modulus_degree, 代价是变慢
-
-void pplp(int th_)
+int main()
 {
-  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sockfd < 0)
+  uint64_t xa = 217;
+  uint64_t ya = 201;
+  uint64_t u = xa * xa + ya * ya;
+  uint64_t th = 16;
+  uint64_t sq_threshold = th * th;
+
+  Plaintext p1(uint64_to_hex_string(u));
+  Plaintext p2(uint64_to_hex_string(xa << 1));
+  Plaintext p3(uint64_to_hex_string(ya << 1));
+
+  std::string ip_addr = "127.0.0.1";
+  int port = 31022;
+
+  cout << "Client's horizontal coordinates:\t" << xa << endl;
+  cout << "Client's vertical coordinates:\t" << ya << endl;
+  cout << "Radius(Threshold):\t" << th << endl;
+
+  // create a socket for server
+  int sockfd_server = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd_server < 0)
   {
     perror("socket:");
     return -1;
   }
   printf("client socket create success........\n");
 
-  struct sockaddr_in srvaddr;
-  memset(&srvaddr, 0, sizeof(srvaddr));
-  srvaddr.sin_family = AF_INET;
-  srvaddr.sin_port = htons(6666);
-  srvaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  int ret = connect(sockfd, (struct sockaddr *)&srvaddr, sizeof(srvaddr));
-  if (ret < 0)
+  // connect to server
+  struct sockaddr_in sockaddr_server;
+  memset(&sockaddr_server, 0, sizeof(sockaddr_server));
+  sockaddr_server.sin_family = AF_INET;
+  sockaddr_server.sin_port = htons(port);
+  sockaddr_server.sin_addr.s_addr = inet_addr("127.0.0.1");
+  int conn_result = connect(sockfd_server, (struct sockaddr *)&sockaddr_server, sizeof(sockaddr_server));
+  if (conn_result < 0)
   {
-    perror("connect");
-    close(sockfd);
+    perror("connect:");
+    close(sockfd_server);
     return -1;
   }
 
-  // A
-  uint64_t xa = 217;
-  uint64_t ya = 201;
-  uint64_t xb = 201;
-  uint64_t yb = 200;
-  // uint64_t ya = 32123123;
-  // uint64_t xa = 32123124;
-  // uint64_t xb = 31005421;
-  // uint64_t yb = 31005321;
-
-  uint64_t th = 16;
-  uint64_t sq_threshold = th * th;
-  uint64_t plain_modulus_bit_count = 33; // 56
-
-  cout << "A's horizontal coordinates:\t" << xa << endl;
-  cout << "A's vertical coordinates:\t" << ya << endl;
-  cout << "B's horizontal coordinates:\t" << xb << endl;
-  cout << "B's vertical coordinates:\t" << yb << endl;
-  cout << "Radius(Threshold):\t" << th << endl;
-
+  char buf[SIZE_BUFFER];
+  std::string userInput;
   auto begin = std::chrono::high_resolution_clock::now();
 
-  // A ---------------------- KeyGen
-  EncryptionParameters parms(scheme_type::bfv);
-  size_t poly_modulus_degree = 4096; // 4096 * 8
-  uint64_t plain_modulus = 1ull << plain_modulus_bit_count;
-  parms.set_poly_modulus_degree(poly_modulus_degree);
-  parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
-  parms.set_plain_modulus(plain_modulus); // 0 -- 10, sq: 0 -- 100
+  // receive the parm from the server
+  ssize_t bytes = recv(sockfd_server, buf, SIZE_BUFFER, 0);
+  std::cout << "Receive context from the server, bytes: " << bytes << std::endl;
+  EncryptionParameters parms;
+  std::stringstream stream_parms;
+  stream_parms << std::string((char *)buf, bytes);
+  parms.load(stream_parms);
 
+  // get the context
   SEALContext context(parms);
   print_parameters(context);
   cout << "Parameter validation (success): " << context.parameter_error_message() << endl;
 
-  char buf[1024];
-  printf("send: ");
-  fgets(buf, sizeof(buf), stdin);
-  ret = write(sockfd, buf, sizeof(buf));
-  if (ret < 0)
-  {
-    perror("write");
-    break;
-  }
-
+  // keygen
   KeyGenerator keygen(context);
-  SecretKey secret_key = keygen.secret_key();
-  PublicKey public_key;
-  keygen.create_public_key(public_key);
+  stream_parms.seekg(0, stream_parms.beg);
+  SecretKey sk = keygen.secret_key();
+  PublicKey pk;
+  keygen.create_public_key(pk);
 
-  Encryptor encryptor(context, public_key);
-  Evaluator evaluator(context);
-  Decryptor decryptor(context, secret_key);
-  RelinKeys relin_keys;
-  keygen.create_relin_keys(relin_keys);
+  // send the pk to the server
+  std::stringstream stream_pk;
+  pk.save(stream_pk);
+  bytes = send(sockfd_server, stream_parms.str().c_str(), stream_parms.str().length(), 0);
+  std::cout << "Send the public key to the server, bytes: " << bytes << std::endl;
 
-  // B ---------------------- BF Insert
-  // initialize bloom filter
-  bloom_parameters bf_parms;
-  bf_parms.projected_element_count = sq_threshold;
-  bf_parms.false_positive_probability = 0.0001; // 1 in 10000
-  bf_parms.random_seed = 0xA5A5A5A5;
-  bf_parms.compute_optimal_parameters();
-  bloom_filter bf(bf_parms);
-  // insert key-hashed blind distance
-  uint64_t r = 13, s = 17, w = 11;
-  int w_len = get_bitlen(w);
-
-  for (uint64_t di = 0; di < sq_threshold; ++di)
-  {
-    uint64_t bd = s * (di + r);
-    // cout << bd << ' ';
-    bf.insert((bd << uint64_t(w_len)) | w);
-  }
-  // cout << endl;
-
-  Ciphertext cr;
-  encryptor.encrypt(Plaintext(uint64_to_hex_string(r * s)), cr);
-  dbg_pc(cr, "cr: ");
-
-  // A ---------------
-  uint64_t u = xa * xa + ya * ya;
-  dbg_pp(u, "u: ");
-
+  // encrypt the data
+  Encryptor encryptor(context, pk);
   Ciphertext c1, c2, c3;
-  Plaintext p1(uint64_to_hex_string(u));
-  Plaintext p2(uint64_to_hex_string(xa << 1));
-  Plaintext p3(uint64_to_hex_string(ya << 1));
-  cout << p1.to_string() << endl;
-  cout << hex << u << endl;
   encryptor.encrypt(p1, c1);
   encryptor.encrypt(p2, c2);
   encryptor.encrypt(p3, c3);
-  dbg_pc(c1, "c1: ");
-  dbg_pc(c2, "c2: ");
-  dbg_pc(c3, "c3: ");
 
-  // B ---------------------
-  uint64_t z = xb * xb + yb * yb;
-  Ciphertext cz, cd;
-  Plaintext pz(uint64_to_hex_string(z));
-  Plaintext pxb(uint64_to_hex_string(xb));
-  Plaintext pyb(uint64_to_hex_string(yb));
-  encryptor.encrypt(pz, cz);
+  // send the encrypted data the server
+  std::stringstream stream_cipher;
+  c1.save(stream_cipher);
+  bytes_to_send(sockfd_server, stream_cipher.str().length());
+  bytes = send(sockfd_server, stream_cipher.str().c_str(), stream_cipher.str().length(), 0);
+  recv(sockfd_server, buf, sizeof(buf), 0);
+  std::cout << "Send the ciphertext 1 to the client, bytes: " << bytes << std::endl;
 
-  evaluator.add_inplace(c1, cz);
-  evaluator.multiply_plain_inplace(c2, pxb);
-  evaluator.multiply_plain_inplace(c3, pyb);
-  cout << "    + size of freshly encrypted x: " << c2.size() << endl;
-  cout << "    + size of freshly encrypted x: " << c3.size() << endl;
+  stream_cipher.clear();
+  stream_cipher.str(std::string());
+  c2.save(stream_cipher);
+  bytes_to_send(sockfd_server, stream_cipher.str().length());
+  bytes = send(sockfd_server, stream_cipher.str().c_str(), stream_cipher.str().length(), 0);
+  recv(sockfd_server, buf, sizeof(buf), 0);
+  std::cout << "Send the ciphertext 2 to the client, bytes: " << bytes << std::endl;
 
-  evaluator.add_inplace(c2, c3);
-  dbg_pc(c1, "c1: ");
-  dbg_pc(c2, "c2: ");
-  evaluator.sub(c1, c2, cd);
-  dbg_pc(cd, "cd: ");
+  stream_cipher.clear();
+  stream_cipher.str(std::string());
+  c3.save(stream_cipher);
+  bytes_to_send(sockfd_server, stream_cipher.str().length());
+  bytes = send(sockfd_server, stream_cipher.str().c_str(), stream_cipher.str().length(), 0);
+  recv(sockfd_server, buf, sizeof(buf), 0);
+  std::cout << "Send the ciphertext 3 to the client, bytes: " << bytes << std::endl;
 
-  evaluator.multiply_plain_inplace(cd, Plaintext(uint64_to_hex_string(s)));
-  dbg_pc(cd, "cd: ");
-  evaluator.add_inplace(cd, cr);
-  dbg_pc(cd, "cd: ");
+  // receive the bloom filter from server
 
-  // A ----------------------
-  Plaintext p_dis;
-  decryptor.decrypt(cd, p_dis);
+  // receive m from the server
 
-  cout << p_dis.to_string() << endl;
-  uint64_t i_dis = hex_string_to_uint(p_dis.to_string());
-  cout << "blind_distance: " << i_dis << endl;
+  // receive the encrypted data from
+  Ciphertext cipher_blind_distance;
+  stream_cipher.clear();
+  stream_cipher.str(std::string());
+  bytes = bytes_to_receive(sockfd_server);
+  while (bytes != 0)
+  {
+    memset(buf, 0, sizeof(buf));
+    ssize_t cur_bytes = recv(sockfd_server, buf, sizeof(buf), 0);
+    stream_cipher << std::string(buf, cur_bytes);
+    bytes -= cur_bytes;
+  }
+  cipher_blind_distance.load(context, stream_cipher);
+  std::cout << "Receive the encrypted data from the server, bytes: " << bytes << std::endl;
 
-  bool isNear = bf.contains((i_dis << uint64_t(w_len)) | w);
+  // decrypt the result to get the blind distance
+  Decryptor decryptor(context, sk);
+  Plaintext plain_blind_distance;
+  decryptor.decrypt(cipher_blind_distance, plain_blind_distance);
+  uint64_t blind_distance = hex_string_to_uint(plain_blind_distance.to_string());
+  cout << "blind_distance: " << blind_distance << endl;
+
+  bool isNear = bf.contains((blind_distance << uint64_t(w_len)) | w);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
 
-  cout << (isNear ? "near" : "far") << endl;
-  printf("Time measured: %.3f seconds.\n", elapsed.count() * 1e-9);
-  cout << endl;
+  std::cout << (isNear ? "near" : "far") << std::endl;
+  std::printf("Time measured: %.3f seconds.\n", elapsed.count() * 1e-9);
+  std::cout << std::endl;
 
-  close(sockfd);
+  close(sockfd_server);
   return 0;
 }
