@@ -28,7 +28,7 @@ void pplp(int th_)
   // uint64_t xb = 31005421;
   // uint64_t yb = 31005321;
 
-  uint64_t th = 16;
+  uint64_t th = 4096;
   uint64_t sq_threshold = th * th;
   uint64_t plain_modulus_bit_count = 33; // 56
 
@@ -105,32 +105,22 @@ void pplp(int th_)
 
   // B ---------------------
   uint64_t z = xb * xb + yb * yb;
-  Ciphertext cz, cd;
-  Plaintext pz(uint64_to_hex_string(z));
-  Plaintext pxb(uint64_to_hex_string(xb));
-  Plaintext pyb(uint64_to_hex_string(yb));
-  encryptor.encrypt(pz, cz);
+  Plaintext plain_z(uint64_to_hex_string(z));
+  Plaintext plain_xb(uint64_to_hex_string(xb));
+  Plaintext plain_yb(uint64_to_hex_string(yb));
 
-  evaluator.add_inplace(c1, cz);
-  evaluator.multiply_plain_inplace(c2, pxb);
-  evaluator.multiply_plain_inplace(c3, pyb);
-  cout << "    + size of freshly encrypted x: " << c2.size() << endl;
-  cout << "    + size of freshly encrypted x: " << c3.size() << endl;
-
+  evaluator.add_plain_inplace(c1, plain_z);
+  evaluator.multiply_plain_inplace(c2, plain_xb);
+  evaluator.multiply_plain_inplace(c3, plain_yb);
   evaluator.add_inplace(c2, c3);
+  evaluator.sub_inplace(c1, c2);
+  evaluator.multiply_plain_inplace(c1, Plaintext(uint64_to_hex_string(s)));
+  evaluator.add_plain_inplace(c1, Plaintext(uint64_to_hex_string(s * r)));
   dbg_pc(c1, "c1: ");
-  dbg_pc(c2, "c2: ");
-  evaluator.sub(c1, c2, cd);
-  dbg_pc(cd, "cd: ");
-
-  evaluator.multiply_plain_inplace(cd, Plaintext(uint64_to_hex_string(s)));
-  dbg_pc(cd, "cd: ");
-  evaluator.add_inplace(cd, cr);
-  dbg_pc(cd, "cd: ");
 
   // A ----------------------
   Plaintext p_dis;
-  decryptor.decrypt(cd, p_dis);
+  decryptor.decrypt(c1, p_dis);
 
   cout << p_dis.to_string() << endl;
   uint64_t i_dis = hex_string_to_uint(p_dis.to_string());
