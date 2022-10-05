@@ -3,7 +3,7 @@
 ## Build
 
 **Requirement**
-- `c++17`.
+- c++17+
 - seal-4.0
 
 ### Linux / wsl
