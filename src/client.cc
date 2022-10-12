@@ -1,103 +1,88 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "seal/seal.h"
+#include "sodium.h"
+
+#include "bloomfilter.h"
+#include "cmdline.h"
+#include "examples.h" // print_parameter
+#include "sodium.h"
+#include "util.h"
+
 #include <chrono>
+#include <cinttypes>
+#include <cstdint>
+#include <cstring>
 #include <iostream>
-#include <set>
 #include <vector>
 
-#include "seal/seal.h"
-#include "util.h"
-#include "bloomfilter.h"
-#include "examples.h"
-
-#include <unistd.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
 #include <netdb.h>
-
-constexpr int SIZE_BUFFER = 4096;
-constexpr const char *STOP_MSG = "STOP";
-char buf[SIZE_BUFFER];
+#include <sys/socket.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace seal;
 
-void bytes_to_send(int sockfd, std::size_t bytes)
-{
-  std::string str_bytes = std::to_string(bytes);
-  send(sockfd, str_bytes.c_str(), str_bytes.length() + 1, 0);
-  recv(sockfd, buf, SIZE_BUFFER, 0);
-}
+int main(int argc, char *argv[]) {
 
-std::size_t bytes_to_receive(int sockfd)
-{
-  recv(sockfd, buf, SIZE_BUFFER, 0);
-  std::size_t bytes = std::stoull(buf);
-  send(sockfd, STOP_MSG, strlen(STOP_MSG), 0);
-  return bytes;
-}
+  cmdline::parser cmd_parser;
+  cmd_parser.add<string>("host", 'h', "ip of server", false, "127.0.0.1");
+  cmd_parser.add<uint16_t>("port", 'p', "port of server", false, 51022,
+                           cmdline::range(1, 65535));
 
-// larger plain_modulus, smaller noise budget
-// small plain_modulus restrict A
-// large plain_modulus restrict B
-// solution: large poly_modulus_degree, but slow
+  cmd_parser.add<uint64_t>("xa", 'x', "coordinate1 of client", false, 1234,
+                           cmdline::range(0ul, UINT64_MAX));
+  cmd_parser.add<uint64_t>("ya", 'y', "coordinate2 of client", false, 1212,
+                           cmdline::range(0ul, UINT64_MAX));
 
-int main()
-{
-  uint64_t xa = 200;
-  uint64_t ya = 201;
+  cmd_parser.add<size_t>("plain_modulus_bits", 'b',
+                         "bit length of plain modulus", false, 56,
+                         cmdline::range(1, 56));
+
+  cmd_parser.add<size_t>("poly_modulus_degree", 'd',
+                         "set degree of polynomial(2^d)", false, 13,
+                         cmdline::range(12, 15));
+
+  cmd_parser.parse_check(argc, argv);
+
+  // radius
+  string ip = cmd_parser.get<string>("host");
+  uint16_t port = cmd_parser.get<uint16_t>("port");
+
+  uint64_t xa = cmd_parser.get<uint64_t>("xa");
+  uint64_t ya = cmd_parser.get<uint64_t>("ya");
+  // uint64_t radius = cmd_parser.get<uint64_t>("radius");
+  // uint64_t sq_radius = radius * radius;
+
   uint64_t u = xa * xa + ya * ya;
-
   Plaintext p1(uint64_to_hex_string(u));
   Plaintext p2(uint64_to_hex_string(xa << 1));
   Plaintext p3(uint64_to_hex_string(ya << 1));
 
-  std::string ip_addr = "127.0.0.1";
-  uint16_t port = local_test_port;
+  pplp_printf("Client's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
+  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", th);
 
-  cout << "Client's horizontal coordinates:\t" << xa << endl;
-  cout << "Client's vertical coordinates:\t\t" << ya << endl;
-  cout << "Radius(Threshold):\t\t\t" << th << endl;
+  int sockfd_server = connect_to_server(ip, port);
+  pplp_printf("Connected to the server,  proximity test start...\n");
 
-  // create a socket for server
-  int sockfd_server = socket(AF_INET, SOCK_STREAM, 0);
-  if (sockfd_server < 0)
-  {
-    perror("socket:");
-    return -1;
-  }
-  printf("client socket created..........\n");
+  auto t1 = std::chrono::high_resolution_clock::now();
 
-  // connect to server
-  struct sockaddr_in sockaddr_server;
-  memset(&sockaddr_server, 0, sizeof(sockaddr_server));
-  sockaddr_server.sin_family = AF_INET;
-  sockaddr_server.sin_port = htons(port);
-  sockaddr_server.sin_addr.s_addr = inet_addr("127.0.0.1");
-  int conn_result = connect(sockfd_server, (struct sockaddr *)&sockaddr_server, sizeof(sockaddr_server));
-  if (conn_result < 0)
-  {
-    perror("connect:");
-    close(sockfd_server);
-    return -1;
-  }
+  // set the parms
+  EncryptionParameters parms(scheme_type::bfv);
+  size_t poly_modulus_degree = 4096;     // 4096 * 8
+  uint64_t plain_modulus_bit_count = 33; // 56
+  uint64_t plain_modulus = 1ull << plain_modulus_bit_count;
+  parms.set_poly_modulus_degree(poly_modulus_degree);
+  parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
+  parms.set_plain_modulus(plain_modulus);
 
-  cout << "Conected to the server,  proximity test start...\n"
-       << endl;
-
-  auto begin = std::chrono::high_resolution_clock::now();
-
-  // receive the parms from the server
-  ssize_t bytes = recv(sockfd_server, buf, sizeof(buf), 0);
-  std::cout << "Receive parms from the server, bytes: " << bytes << std::endl;
-  // set the parms and the context
-  EncryptionParameters parms;
-  std::stringstream stream_parms;
-  stream_parms << std::string((char *)buf, bytes);
-  parms.load(stream_parms);
+  // set the context
   SEALContext context(parms);
-  print_parameters(context);
-  cout << "Parameter validation (success): " << context.parameter_error_message() << endl;
+  if (flag_log)
+    print_parameters(context);
+  cout << "Parameter validation (success): "
+       << context.parameter_error_message() << endl;
 
   // generate sk and pk
   KeyGenerator keygen(context);
@@ -105,12 +90,21 @@ int main()
   PublicKey pk;
   keygen.create_public_key(pk);
 
+  // send the parms to the server
+  std::stringstream stream_parms;
+  parms.save(stream_parms);
+  // cout << stream_parms.str() << endl;
+  ssize_t bytes = send(sockfd_server, stream_parms.str().c_str(),
+                       stream_parms.str().length(), 0);
+  cout << "Send parms(context) to the server, bytes: " << bytes << endl;
+
   // send the pk to the server
   std::stringstream stream_pk;
   pk.save(stream_pk);
   bytes_to_send(sockfd_server, stream_pk.str().length());
-  bytes = send(sockfd_server, stream_pk.str().c_str(), stream_pk.str().length(), 0);
-  std::cout << "Send the public key to the server, bytes: " << bytes << std::endl;
+  bytes =
+      send(sockfd_server, stream_pk.str().c_str(), stream_pk.str().length(), 0);
+  cout << "Send the public key to the server, bytes: " << bytes << endl;
 
   // encrypt the data
   Encryptor encryptor(context, pk);
@@ -123,30 +117,32 @@ int main()
   std::stringstream stream_cipher;
   c1.save(stream_cipher);
   bytes_to_send(sockfd_server, stream_cipher.str().length());
-  bytes = send(sockfd_server, stream_cipher.str().c_str(), stream_cipher.str().length(), 0);
-  std::cout << "Send the ciphertext 1 to the server, bytes: " << bytes << std::endl;
+  bytes = send(sockfd_server, stream_cipher.str().c_str(),
+               stream_cipher.str().length(), 0);
+  cout << "Send the ciphertext 1 to the server, bytes: " << bytes << endl;
 
   stream_cipher.clear();
   stream_cipher.str(std::string());
   c2.save(stream_cipher);
   bytes_to_send(sockfd_server, stream_cipher.str().length());
-  bytes = send(sockfd_server, stream_cipher.str().c_str(), stream_cipher.str().length(), 0);
-  std::cout << "Send the ciphertext 2 to the server, bytes: " << bytes << std::endl;
+  bytes = send(sockfd_server, stream_cipher.str().c_str(),
+               stream_cipher.str().length(), 0);
+  cout << "Send the ciphertext 2 to the server, bytes: " << bytes << endl;
 
   stream_cipher.clear();
   stream_cipher.str(std::string());
   c3.save(stream_cipher);
   bytes_to_send(sockfd_server, stream_cipher.str().length());
-  bytes = send(sockfd_server, stream_cipher.str().c_str(), stream_cipher.str().length(), 0);
-  std::cout << "Send the ciphertext 3 to the server, bytes: " << bytes << std::endl;
+  bytes = send(sockfd_server, stream_cipher.str().c_str(),
+               stream_cipher.str().length(), 0);
+  cout << "Send the ciphertext 3 to the server, bytes: " << bytes << endl;
 
   // receive the bloom filter from server
   bytes = bytes_to_receive(sockfd_server);
   ssize_t bytes_tmp = bytes;
   uint8_t *bf_buf = (uint8_t *)malloc(bytes);
   uint8_t *p_bf_buf = bf_buf;
-  while (bytes != 0)
-  {
+  while (bytes != 0) {
     ssize_t cur_bytes = recv(sockfd_server, p_bf_buf, bytes, 0);
     p_bf_buf += cur_bytes;
     bytes -= cur_bytes;
@@ -154,7 +150,7 @@ int main()
   uint64_t w = *(uint64_t *)bf_buf;
   bloom_filter bf(bf_buf + sizeof(uint64_t));
   free(bf_buf);
-  std::cout << "Receive the BF from the server, bytes: " << bytes_tmp << std::endl;
+  cout << "Receive the BF from the server, bytes: " << bytes_tmp << endl;
 
   // receive the encrypted data from the server
   Ciphertext cipher_blind_distance;
@@ -162,30 +158,31 @@ int main()
   stream_cipher.str(std::string());
   bytes = bytes_to_receive(sockfd_server);
   bytes_tmp = bytes;
-  while (bytes != 0)
-  {
+  while (bytes != 0) {
     memset(buf, 0, sizeof(buf));
     ssize_t cur_bytes = recv(sockfd_server, buf, sizeof(buf), 0);
     stream_cipher << std::string(buf, cur_bytes);
     bytes -= cur_bytes;
   }
   cipher_blind_distance.load(context, stream_cipher);
-  std::cout << "Receive the encrypted data from the server, bytes: " << bytes_tmp << std::endl;
+  cout << "Receive the encrypted data from the server, bytes: " << bytes_tmp
+       << endl;
 
   // decrypt the result to get the blind distance
   Decryptor decryptor(context, sk);
   Plaintext plain_blind_distance;
   decryptor.decrypt(cipher_blind_distance, plain_blind_distance);
 
-  uint64_t blind_distance = hex_string_to_uint(plain_blind_distance.to_string());
+  uint64_t blind_distance =
+      hex_string_to_uint(plain_blind_distance.to_string());
   cout << "blind_distance: " << blind_distance << endl;
   bool isNear = bf.contains((blind_distance << get_bitlen(w)) | w);
   auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+  auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - t1);
 
-  std::cout << (isNear ? "near" : "far") << std::endl;
+  cout << (isNear ? "near" : "far") << endl;
   std::printf("Time measured: %.3f seconds.\n", elapsed.count() * 1e-9);
-  std::cout << std::endl;
+  cout << endl;
   close(sockfd_server);
   return 0;
 }
