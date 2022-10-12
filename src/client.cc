@@ -32,13 +32,16 @@ int main(int argc, char *argv[]) {
                            cmdline::range(1, 65535));
 
   cmd_parser.add<uint64_t>("xa", 'x', "coordinate1 of client", false, 1234,
-                           cmdline::range(0ul, UINT64_MAX));
+                           cmdline::range(0ul, 1ul << 27)); // 134217728
   cmd_parser.add<uint64_t>("ya", 'y', "coordinate2 of client", false, 1212,
-                           cmdline::range(0ul, UINT64_MAX));
+                           cmdline::range(0ul, 1ul << 27)); // 134217728
 
   cmd_parser.add<size_t>("plain_modulus_bits", 'b',
                          "bit length of plain modulus", false, 56,
                          cmdline::range(1, 56));
+
+  cmd_parser.add<uint64_t>("radius", 'r', "radius/thershold", false, 128,
+                           cmdline::range(1, 8192));
 
   cmd_parser.add<size_t>("poly_modulus_degree", 'd',
                          "set degree of polynomial(2^d)", false, 13,
@@ -52,7 +55,7 @@ int main(int argc, char *argv[]) {
 
   uint64_t xa = cmd_parser.get<uint64_t>("xa");
   uint64_t ya = cmd_parser.get<uint64_t>("ya");
-  // uint64_t radius = cmd_parser.get<uint64_t>("radius");
+  uint64_t radius = cmd_parser.get<uint64_t>("radius");
   // uint64_t sq_radius = radius * radius;
 
   uint64_t u = xa * xa + ya * ya;
@@ -61,7 +64,7 @@ int main(int argc, char *argv[]) {
   Plaintext p3(uint64_to_hex_string(ya << 1));
 
   pplp_printf("Client's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
-  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", th);
+  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", radius);
 
   int sockfd_server = connect_to_server(ip, port);
   pplp_printf("Connected to the server,  proximity test start...\n");
@@ -70,12 +73,14 @@ int main(int argc, char *argv[]) {
 
   // set the parms
   EncryptionParameters parms(scheme_type::bfv);
-  size_t poly_modulus_degree = 4096;     // 4096 * 8
-  uint64_t plain_modulus_bit_count = 33; // 56
-  uint64_t plain_modulus = 1ull << plain_modulus_bit_count;
+  size_t poly_modulus_degree_bits =
+      cmd_parser.get<size_t>("poly_modulus_degree"); // 4096 * 8
+  size_t plain_modulus_bits = cmd_parser.get<size_t>("plain_modulus_bits");
+  size_t poly_modulus_degree = 1ull << poly_modulus_degree_bits;
+  size_t plain_modulus = 1ull << plain_modulus_bits;
   parms.set_poly_modulus_degree(poly_modulus_degree);
   parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
-  parms.set_plain_modulus(plain_modulus);
+  parms.set_plain_modulus(plain_modulus); // sq
 
   // set the context
   SEALContext context(parms);
