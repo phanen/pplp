@@ -7,6 +7,11 @@ project(pplp)
 set(CMAKE_BUILD_TYPE Release) # lib is release version
 set(CMAKE_CXX_STANDARD 17)
 
+# set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lsodium" CACHE STRING "Set C++ Compiler Flags" FORCE)
+
+# CFLAGS=$(pkg-config --cflags libsodium)
+# LDFLAGS=$(pkg-config --libs libsodium)
+
 # check results and add flag
 # if(COMPILER_SUPPORTS_CXX17)#
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
@@ -17,17 +22,24 @@ set(CMAKE_CXX_STANDARD 17)
 # else()
 # message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
 # endif()
+
+set(CMAKE_MODULE_PATH
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
+ " ${CMAKE_MODULE_PATH}")
+
 find_package(SEAL 4.0 REQUIRED)
+find_package(sodium REQUIRED)
 
 # non-interactive demo
-add_executable(pplp src/main.cc src/demo.cc)
+add_executable(pplp src/demo.cc)
+target_include_directories(pplp PRIVATE ./include)
+target_link_libraries(pplp PRIVATE SEAL::seal sodium)
 
 add_executable(client src/client.cc)
 add_executable(server src/server.cc)
 
 target_include_directories(client PRIVATE ./include)
-target_link_libraries(client PRIVATE SEAL::seal)
+target_link_libraries(client PRIVATE SEAL::seal sodium)
 target_include_directories(server PRIVATE ./include)
-target_link_libraries(server PRIVATE SEAL::seal)
-target_include_directories(pplp PRIVATE ./include)
-target_link_libraries(pplp PRIVATE SEAL::seal)
+target_link_libraries(server PRIVATE SEAL::seal sodium)
+
