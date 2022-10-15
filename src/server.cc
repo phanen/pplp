@@ -1,5 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
-
 #include "seal/seal.h"
 #include "sodium.h"
 
@@ -10,9 +8,12 @@
 
 #include <chrono>
 #include <cinttypes>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <seal/ciphertext.h>
+#include <seal/randomgen.h>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -29,7 +30,7 @@ int main(int argc, char *argv[]) {
   cmd_parser.add<string>("host", 'h', "ip of server", false, "127.0.0.1");
   cmd_parser.add<uint16_t>("port", 'p', "port of server", false, 51022,
                            cmdline::range(1, 65535));
-
+  // 123456888 132456999
   cmd_parser.add<uint64_t>("xb", 'u', "coordinate1 of server", false, 1000,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
   cmd_parser.add<uint64_t>("yb", 'v', "coordinate2 of server", false, 1000,
@@ -50,81 +51,62 @@ int main(int argc, char *argv[]) {
   uint64_t sq_radius = radius * radius;
 
   pplp_printf("Server's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xb, yb);
-  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", th);
+  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", radius);
 
   int sockfd_client = connect_to_client(ip, port);
+  if (sockfd_client < 0) // fail
+    return -1;
+  pplp_printf("\nproximity test start...\n");
 
-  pplp_printf("proximity test start...\n");
+  auto begin = chrono::high_resolution_clock::now();
 
-  auto t1 = std::chrono::high_resolution_clock::now();
+  // Initialization
+  // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  pplp_printf("Initialization stage...\n");
 
-  // receive the parms from the client
-  ssize_t bytes = recv(sockfd_client, buf, sizeof(buf), 0);
-  cout << "Receive parms from the client, bytes: " << bytes << endl;
+  // Recv the parms
+  auto bytes = recv(sockfd_client, buf, sizeof(buf), 0);
+  pplp_printf("Recv the parms(context), bytes: %zu \n", size_t(bytes));
 
-  // set the parms and the context
+  // set the context
   EncryptionParameters parms;
-  std::stringstream stream_parms;
-  stream_parms << std::string((char *)buf, bytes);
+  stringstream stream_parms(string((char *)buf, bytes));
   parms.load(stream_parms);
   SEALContext context(parms);
-
   if (flag_log)
     print_parameters(context);
-  cout << "Parameter validation (success): "
-       << context.parameter_error_message() << endl;
-
-  // receive the pk from the client
-  std::stringstream stream_pk;
-  bytes = bytes_to_receive(sockfd_client);
-  ssize_t bytes_tmp = bytes;
-  while (bytes != 0) {
-    memset(buf, 0, sizeof(buf));
-    ssize_t cur_bytes = recv(sockfd_client, buf, sizeof(buf), 0);
-    stream_pk << std::string((char *)buf, cur_bytes);
-    bytes -= cur_bytes;
-  };
-  cout << "Receive the public key from the client, bytes: " << bytes_tmp
-       << endl;
-  PublicKey pk;
-  pk.load(context, stream_pk);
+  pplp_printf("Parameter validation: %s\n", context.parameter_error_message());
 
   // set the bloom filter
   bloom_parameters bf_parms;
-  bf_parms.projected_element_count = sq_threshold;
+  bf_parms.projected_element_count = sq_radius;
   bf_parms.false_positive_probability = 0.0001; // 1 in 10000
   bf_parms.random_seed = 0xA5A5A5A5;
   bf_parms.compute_optimal_parameters();
   bloom_filter bf(bf_parms);
+
   // generate the random number
-  int sq_len = get_bitlen(sq_radius);
-  uint64_t r = randombytes_uniform(56 - sq_len);
-  uint64_t s = randombytes_uniform(sq_len);
-  uint64_t w = randombytes_uniform(256);
+  uint64_t r, s, w; // to fix
+  random_bytes((byte *)&r, 4);
+  random_bytes((byte *)&s, 4);
+  random_bytes((byte *)&w, 2);
   int w_len = get_bitlen(w);
+  cout << "wlne" << w_len << endl;
   for (uint64_t di = 0; di < sq_radius; ++di) {
-    uint64_t bd = s * (di + r);
+    uint64_t bd = s * (di + r); // overflow ??
     bf.insert((bd << uint64_t(w_len)) | w);
   }
 
-  // reveive the encrypted data from the client
-  std::vector<Ciphertext> lst_cipher;
+  // receive the encrypted data
+  vector<Ciphertext> lst_cipher(3);
+
   // for each ciphertext
   for (size_t id_cipher = 0; id_cipher < 3; id_cipher++) {
-    bytes = bytes_to_receive(sockfd_client);
-    Ciphertext cipher_tmp;
-    std::stringstream stream_cipher;
-    ssize_t bytes_tmp = bytes;
-    while (bytes != 0) {
-      memset(buf, 0, sizeof(buf));
-      ssize_t cur_bytes = recv(sockfd_client, buf, sizeof(buf), 0);
-      stream_cipher << std::string((char *)buf, cur_bytes);
-      bytes -= cur_bytes;
-    }
-    cipher_tmp.load(context, stream_cipher);
-    lst_cipher.push_back(cipher_tmp);
-    cout << "Receive the ciphertext " << id_cipher + 1
-         << " from the client, bytes: " << bytes_tmp << endl;
+    stringstream stream_cipher;
+    bytes = recv_by_stream(sockfd_client, stream_cipher);
+    lst_cipher[id_cipher].load(context, stream_cipher);
+    pplp_printf("Recv the ciphertext %zu, bytes: %zu\n", id_cipher,
+                size_t(bytes));
   }
 
   //  homomorphic evaluation
@@ -142,26 +124,26 @@ int main(int argc, char *argv[]) {
   evaluator.add_plain_inplace(lst_cipher[0],
                               Plaintext(uint64_to_hex_string(s * r)));
 
-  // send the bloom filter and hash key
+  // send the bloom filter and hash key (w || BF)
   bytes = sizeof(uint64_t) + bf.compute_serialization_size();
   bytes_to_send(sockfd_client, bytes);
   uint8_t *bf_buf = (uint8_t *)malloc(bytes);
   *(uint64_t *)bf_buf = w;
   bf.serialize(bf_buf + sizeof(uint64_t));
   bytes = send(sockfd_client, bf_buf, bytes, 0);
-  cout << "Send the BF to the client, bytes sent : " << bytes << endl;
+  pplp_printf("Send the BF and hash key, bytes: %zu\n", size_t(bytes));
   free(bf_buf);
 
   // send the encrypted blind distance
-  std::stringstream stream_cipher;
+  stringstream stream_cipher;
   lst_cipher[0].save(stream_cipher);
   bytes_to_send(sockfd_client, stream_cipher.str().length());
   bytes = send(sockfd_client, stream_cipher.str().c_str(),
                stream_cipher.str().length(), 0);
-  cout << "Send the encrypted blind distance to the client, bytes sent : "
-       << bytes << endl;
-  auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - t1);
+  pplp_printf("Send the encrypted blind distance, bytes: %zu\n", size_t(bytes));
+
+  auto end = chrono::high_resolution_clock::now();
+  auto elapsed = chrono::duration_cast<chrono::nanoseconds>(end - begin);
 
   printf("Time measured: %.3f seconds.\n", elapsed.count() * 1e-9);
   close(sockfd_client);

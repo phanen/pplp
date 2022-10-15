@@ -1,12 +1,15 @@
 
 #include <cinttypes>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
 
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sstream>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 // for non - interactive only
@@ -32,30 +35,51 @@ std::size_t get_bitlen(uint64_t x) {
   return ret;
 }
 
-// radius
-uint64_t th = 16;
-uint64_t sq_threshold = th * th;
-// run client and server in locally
-uint16_t port = 51022;
-
+// set the log level
 constexpr bool flag_log = 1;
-constexpr int SIZE_BUFFER = 4096;
-constexpr const char *STOP_MSG = "STOP";
-char buf[SIZE_BUFFER];
-
 int dummy_printf(const char *__restrict __fmt, ...) { return 1; }
 auto pplp_printf = flag_log ? std::printf : dummy_printf;
 
+// - coordination of pre-send / pre-recv
+// - handle the dynamic transmissions
+constexpr int SIZE_BUFFER = 4096;
+char buf[SIZE_BUFFER];
+
+// pre-send the bytes length
 void bytes_to_send(int sockfd, std::size_t bytes) {
+  memset(buf, 0, SIZE_BUFFER);
   std::string str_bytes = std::to_string(bytes);
-  send(sockfd, str_bytes.c_str(), str_bytes.length() + 1, 0);
-  recv(sockfd, buf, SIZE_BUFFER, 0);
+  send(sockfd, str_bytes.c_str(), SIZE_BUFFER, 0);
 }
 
+// pre-recv the bytes length
 std::size_t bytes_to_receive(int sockfd) {
+  memset(buf, 0, SIZE_BUFFER);
   recv(sockfd, buf, SIZE_BUFFER, 0);
   std::size_t bytes = std::stoull(buf);
-  send(sockfd, STOP_MSG, strlen(STOP_MSG), 0);
+  return bytes;
+}
+
+// send by stream (must tell the peer how many bytes)
+ssize_t send_by_stream(int sockfd, std::stringstream &ss) {
+  bytes_to_send(sockfd, ss.str().length());
+  ssize_t bytes = send(sockfd, ss.str().c_str(), ss.str().length(), 0);
+  return bytes;
+}
+
+// recv by stream
+ssize_t recv_by_stream(int sockfd, std::stringstream &ss) {
+  auto bytes = bytes_to_receive(sockfd);
+  for (size_t remain_bytes = bytes; remain_bytes != 0;) {
+    memset(buf, 0, sizeof(buf));
+    auto cur_bytes =
+        recv(sockfd, buf, std::min(size_t(remain_bytes), sizeof(buf)), 0);
+    // if fail in half
+    if (cur_bytes < 0)
+      return cur_bytes; // instead... (bytes - remain_bytes)
+    ss << std::string(buf, cur_bytes);
+    remain_bytes -= cur_bytes;
+  }
   return bytes;
 }
 
@@ -63,7 +87,7 @@ int connect_to_server(std::string ip, uint16_t port) {
   // create a socket for server
   int sockfd_server = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd_server < 0) {
-    perror("socket:");
+    perror("socket");
     return sockfd_server; // or -1
   }
   pplp_printf("client socket created..........\n");
@@ -78,7 +102,7 @@ int connect_to_server(std::string ip, uint16_t port) {
   int conn_result = connect(sockfd_server, (struct sockaddr *)&sockaddr_server,
                             sizeof(sockaddr_server));
   if (conn_result < 0) {
-    perror("connect:");
+    perror("connect");
     close(sockfd_server);
     return -1;
   }
@@ -104,14 +128,14 @@ int connect_to_client(std::string ip, uint16_t port) {
   myaddr.sin_addr.s_addr = inet_addr(ip.c_str());
   int ret = bind(sockfd_listening, (struct sockaddr *)&myaddr, sizeof(myaddr));
   if (ret < 0) {
-    perror("bind:");
+    perror("bind");
     return -1;
   }
 
   // socket is for listening
   ret = listen(sockfd_listening, 8);
   if (ret < 0) {
-    perror("listen:");
+    perror("listen");
     return -1;
   }
   pplp_printf("listening...............\n");
@@ -122,7 +146,7 @@ int connect_to_client(std::string ip, uint16_t port) {
   int sockfd_client = accept(sockfd_listening, (sockaddr *)&sockaddr_client,
                              (socklen_t *)&sz_client);
   if (sockfd_client < 0) {
-    perror("accept:");
+    perror("accept");
     return -1;
   }
 

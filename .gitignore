@@ -1,12 +1,15 @@
+
 .cache/
 .vscode/
 bin/
 lib/
 build/
 
+
 *.out
 *.o
 *.a
+.readme
 
 
 thetest.*
