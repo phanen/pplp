@@ -32,5 +32,5 @@ rm build
 ## To Do
 - [x] Add serialization for Bloom Filter
 - [x] Implementing C/S demo 
-- [ ] Hash function (on blind distance)
-- [ ] Cryptographic RNG for blind factor.
+- [ ] ~~Hash function (on blind distance)~~ ??
+- [ ] Set parms of RNG (size of random number) 
