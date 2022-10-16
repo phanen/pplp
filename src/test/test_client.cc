@@ -54,16 +54,19 @@ int main(int argc, char *argv[]) {
     auto raw_data =
         test_client_leg(sockfd_server, radius, ip, port, xa, ya,
                         poly_modulus_degree_bits, plain_modulus_bits);
-    parse2csv_client_leg("./client_legacy.csv", radius, i == 0, raw_data);
+    parse2csv_client_leg("./client_leg.csv", radius, i == 0, raw_data);
     radius <<= 1;
   }
-  // // test opt
-  // radius = 16;
-  // for (size_t i = 0; i < 9; ++i) { // radius 8, 16, 32, ... , 4096 (4 ... 12)
-  //   auto cur_vec =
-  //       test_client_opt(sockfd_server, radius, ip, port, xa, ya,
-  //                       poly_modulus_degree_bits, plain_modulus_bits);
-  // }
+
+  // test opt
+  radius = 16;
+  for (size_t i = 0; i < 9; ++i) { // radius 8, 16, 32, ... , 4096 (4 ... 12)
+    auto raw_data =
+        test_client_opt(sockfd_server, radius, ip, port, xa, ya,
+                        poly_modulus_degree_bits, plain_modulus_bits);
+    parse2csv_client_leg("./client_opt.csv", radius, i == 0, raw_data);
+    radius <<= 1;
+  }
 
   close(sockfd_server);
 }
@@ -83,7 +86,8 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
 
   uint64_t c_total = 0;
 
-  auto t_init0 = chrono::high_resolution_clock::now();
+  auto t_begin = chrono::high_resolution_clock::now();
+  auto t_setParms0 = chrono::high_resolution_clock::now();
 
   // set the parms
   EncryptionParameters parms(scheme_type::bfv);
@@ -95,7 +99,7 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   // set the context
   SEALContext context(parms);
 
-  auto t_init1 = chrono::high_resolution_clock::now();
+  auto t_setParms1 = chrono::high_resolution_clock::now();
 
   if (flag_log)
     print_parameters(context);
@@ -120,7 +124,6 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
                        stream_parms.str().length(), 0);
 
   auto t_sendParms1 = chrono::high_resolution_clock::now();
-
   auto c_sendParms = bytes;
   c_total += c_sendParms;
 
@@ -135,11 +138,8 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   pplp_printf("Send the public key to the server, bytes: %zu\n", bytes);
 
   auto t_sendPk1 = chrono::high_resolution_clock::now();
-
   auto c_sendPk = bytes;
   c_total += c_sendPk;
-
-  auto t_sendCip0 = chrono::high_resolution_clock::now();
 
   auto t_enc0 = chrono::high_resolution_clock::now();
 
@@ -154,6 +154,8 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
 
   uint64_t lst_c_sendCip[3];
 
+  auto t_sendCip0 = chrono::high_resolution_clock::now();
+
   vector<Ciphertext> lst_cipher{c1, c2, c3};
   for (size_t id_cipher = 0; id_cipher < 3; id_cipher++) {
     stringstream stream_cipher;
@@ -164,10 +166,9 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
     lst_c_sendCip[id_cipher] = bytes;
   }
 
+  auto t_sendCip1 = chrono::high_resolution_clock::now();
   auto c_sendCips = lst_c_sendCip[0] + lst_c_sendCip[1] + lst_c_sendCip[2];
   c_total += c_sendCips;
-
-  auto t_sendCip1 = chrono::high_resolution_clock::now();
 
   auto t_recvBF0 = chrono::high_resolution_clock::now();
 
@@ -188,7 +189,6 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   free(bf_buf);
 
   auto t_recvBF1 = chrono::high_resolution_clock::now();
-
   auto c_recvBF = bytes;
   c_total += c_recvBF;
 
@@ -202,7 +202,6 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   pplp_printf("Recv the encrypted blind distance, bytes: %zu\n", size_t(bytes));
 
   auto t_recvBD1 = chrono::high_resolution_clock::now();
-
   auto c_recvBD = bytes;
   c_total += c_recvBD;
 
@@ -221,11 +220,10 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   pplp_printf("blind_distance: %" PRIu64 "\n", blind_distance);
 
   bool isNear = bf.contains((blind_distance << get_bitlen(w)) | w);
-
-  pplp_printf(isNear ? "near\n" : "far\n");
+  cout << (isNear ? "near\n" : "far\n");
 
   // parse the time points
-  double d_init = get_diff(t_init1, t_init0);
+  double d_setParms = get_diff(t_setParms1, t_setParms0);
   double d_kGen = get_diff(t_dec1, t_dec0);
 
   double d_sendPk = get_diff(t_sendPk1, t_sendPk0);
@@ -239,10 +237,10 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   double d_recvBD = get_diff(t_recvBD1, t_recvBD0);
   double d_dec = get_diff(t_dec1, t_dec0);
 
-  double d_stage1 = d_init + d_kGen;
+  double d_stage1 = d_setParms + d_kGen;
   double d_stage2 = 0.00;
   double d_stage3 = d_enc + d_dec;
-  double d_total = get_diff(t_dec1, t_dec0);
+  double d_total = get_diff(t_end, t_begin);
   double d_totalCalc = d_stage1 + d_stage2 + d_stage3;
   double d_totalTraffic = 0.0;
 
@@ -262,7 +260,7 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
               .c_total = (TrafficLoad::tl_t)c_total, //
           },
           DurationClient{
-              .d_init = (DurationClient::dr_t)d_init,                 //
+              .d_setParms = (DurationClient::dr_t)d_setParms,         //
               .d_kGen = (DurationClient::dr_t)d_kGen,                 //
               .d_enc = (DurationClient::dr_t)d_enc,                   //
               .d_sendPk = (DurationClient::dr_t)d_sendPk,             //
@@ -281,16 +279,22 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
 }
 
 // optimized
-static std::pair<TrafficLoad, DurationClient>
+static pair<TrafficLoad, DurationClient>
 test_client_opt(int sockfd_server, uint64_t radius, string ip, uint16_t port,
                 uint64_t xa, uint64_t ya, uint64_t poly_modulus_degree_bits,
                 uint64_t plain_modulus_bits) {
 
   auto u = xa * xa + ya * ya;
+  auto sq_raduis = radius * radius;
+
+  pplp_printf("Proximity test start...\n");
+  pplp_printf("Cerver's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
+  pplp_printf("Radius:\t\t\t\t%" PRIu64 "\n", radius);
 
   uint64_t c_total = 0;
 
-  auto t_init0 = chrono::high_resolution_clock::now();
+  auto t_begin = chrono::high_resolution_clock::now();
+  auto t_setParm0 = chrono::high_resolution_clock::now();
 
   // set the parms
   EncryptionParameters parms(scheme_type::bfv);
@@ -302,7 +306,19 @@ test_client_opt(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   // set the context
   SEALContext context(parms);
 
-  auto t_init1 = chrono::high_resolution_clock::now();
+  auto t_setParms1 = chrono::high_resolution_clock::now();
+
+  auto t_sendParms0 = chrono::high_resolution_clock::now();
+
+  // send the parms to the server
+  stringstream stream_parms;
+  parms.save(stream_parms);
+  ssize_t bytes = send(sockfd_server, stream_parms.str().c_str(),
+                       stream_parms.str().length(), 0);
+
+  auto t_sendParms1 = chrono::high_resolution_clock::now();
+  auto c_sendParms = bytes;
+  c_total += c_sendParms;
 
   if (flag_log)
     print_parameters(context);
@@ -329,38 +345,11 @@ test_client_opt(int sockfd_server, uint64_t radius, string ip, uint16_t port,
 
   auto t_enc1 = chrono::high_resolution_clock::now();
 
-  auto t_sendParms0 = chrono::high_resolution_clock::now();
-
-  // send the parms to the server
-  stringstream stream_parms;
-  parms.save(stream_parms);
-  ssize_t bytes = send(sockfd_server, stream_parms.str().c_str(),
-                       stream_parms.str().length(), 0);
-
-  auto t_sendParms1 = chrono::high_resolution_clock::now();
-
-  auto c_sendParms = bytes;
-  c_total += c_sendParms;
-
-  auto t_sendPk0 = chrono::high_resolution_clock::now();
-
-  // send the pk to the server
-  stringstream stream_pk;
-  pk.save(stream_pk);
-  bytes_to_send(sockfd_server, stream_pk.str().length());
-  bytes =
-      send(sockfd_server, stream_pk.str().c_str(), stream_pk.str().length(), 0);
-  pplp_printf("Send the public key to the server, bytes: %zu\n", bytes);
-
-  auto t_sendPk1 = chrono::high_resolution_clock::now();
-
-  auto c_sendPk = bytes;
-  c_total += c_sendPk;
-
   auto t_sendCip0 = chrono::high_resolution_clock::now();
 
   uint64_t lst_c_sendCip[3];
 
+  // send the ciphertext
   vector<Ciphertext> lst_cipher{c1, c2, c3};
   for (size_t id_cipher = 0; id_cipher < 3; id_cipher++) {
     stringstream stream_cipher;
@@ -371,10 +360,12 @@ test_client_opt(int sockfd_server, uint64_t radius, string ip, uint16_t port,
     lst_c_sendCip[id_cipher] = bytes;
   }
 
+  auto t_sendCip1 = chrono::high_resolution_clock::now();
   auto c_sendCips = lst_c_sendCip[0] + lst_c_sendCip[1] + lst_c_sendCip[2];
   c_total += c_sendCips;
 
-  auto t_sendCip1 = chrono::high_resolution_clock::now();
+  // auto c_sendPk = 0;
+  // c_total += c_sendPk;
 
   auto t_recvBF0 = chrono::high_resolution_clock::now();
 
@@ -409,7 +400,6 @@ test_client_opt(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   pplp_printf("Recv the encrypted blind distance, bytes: %zu\n", size_t(bytes));
 
   auto t_recvBD1 = chrono::high_resolution_clock::now();
-
   auto c_recvBD = bytes;
   c_total += c_recvBD;
 
@@ -421,67 +411,46 @@ test_client_opt(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   decryptor.decrypt(cipher_blind_distance, plain_blind_distance);
 
   auto t_dec1 = chrono::high_resolution_clock::now();
+  auto t_end = chrono::high_resolution_clock::now();
 
   uint64_t blind_distance =
       hex_string_to_uint(plain_blind_distance.to_string());
   pplp_printf("blind_distance: %" PRIu64 "\n", blind_distance);
 
   bool isNear = bf.contains((blind_distance << get_bitlen(w)) | w);
+  cout << (isNear ? "near\n" : "far\n");
 
-  pplp_printf(isNear ? "near\n" : "far\n");
+  DurationClient du;
+  TrafficLoad tr;
 
   // parse the time points
-  bytes_to_receive(sockfd_server);
+  du.d_setParms = get_diff(t_setParms1, t_setParm0);
+  du.d_sendParms = get_diff(t_sendParms1, t_sendParms0);
+  du.d_kGen = get_diff(t_dec1, t_dec0);
+  du.d_enc = get_diff(t_enc1, t_enc0);
+  du.d_sendPk = 0.00; // get_diff(t_sendPk1, t_sendPk0);
+  du.d_sendCip = get_diff(t_sendCip1, t_sendCip0);
 
-  // get the diff of time
-  auto get_diff = [](chrono::system_clock::time_point t1,
-                     chrono::system_clock::time_point t0) {
-    return chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();
-  };
+  du.d_recvBF = get_diff(t_recvBF1, t_recvBF0);
+  du.d_recvBD = get_diff(t_recvBD1, t_recvBD0);
+  du.d_dec = get_diff(t_dec1, t_dec0);
 
-  double d_init = get_diff(t_init1, t_init0);
-  double d_kGen = get_diff(t_dec1, t_dec0);
-  double d_enc = get_diff(t_enc1, t_dec0);
-  double d_sendPk = get_diff(t_sendPk1, t_sendPk0);
-  double d_sendParms = get_diff(t_sendParms1, t_sendParms0);
-  double d_sendCip = get_diff(t_sendCip1, t_sendCip0);
-  double d_recvBF = get_diff(t_recvBF1, t_recvBF0);
-  double d_recvBD = get_diff(t_recvBD1, t_recvBD0);
-  double d_dec = get_diff(t_dec1, t_dec0);
-
-  double d_stage1 = d_init + d_kGen + d_enc;
-  double d_stage2 = 0.00;
-  double d_stage3 = d_dec;
+  du.d_stage1 = du.d_setParms + du.d_kGen + du.d_enc;
+  du.d_stage2 = 0.00;
+  du.d_stage3 = du.d_dec;
+  du.d_total = get_diff(t_end, t_begin);
+  du.d_totalCalc = du.d_stage1 + du.d_stage2 + du.d_stage3;
+  du.d_totalTraffic = 0.0;
 
   // parse the traffic loads
-  auto c_sendTotal = c_sendParms + c_sendPk + c_sendCips;
-  auto c_recvTotal = c_total - c_sendTotal;
+  tr.c_sendParms = c_sendParms; //
+  tr.c_sendPk = 0.00;           //
+  tr.c_sendCips = c_sendCips;   //
+  tr.c_recvBF = c_recvBF;       //
+  tr.c_recvBD = c_recvBD;       //
+  tr.c_totalSend = c_sendParms + 0.00 + c_sendCips;
+  tr.c_totalRecv = c_total - tr.c_totalSend;
+  tr.c_total = c_total; //
 
-  return {
-      //
-      TrafficLoad{
-          .c_sendParms = (TrafficLoad::tl_t)c_sendParms, //
-          .c_sendPk = (TrafficLoad::tl_t)c_sendPk,       //
-          .c_sendCips = (TrafficLoad::tl_t)c_sendCips,   //
-          .c_recvBF = (TrafficLoad::tl_t)c_recvBF,       //
-          .c_recvBD = (TrafficLoad::tl_t)c_recvBD,       //
-          .c_totalSend = (TrafficLoad::tl_t)c_sendTotal, //
-          .c_totalRecv = (TrafficLoad::tl_t)c_recvTotal,
-          .c_total = (TrafficLoad::tl_t)c_total, //
-      },
-      DurationClient{
-          .d_init = (DurationClient::dr_t)d_init,           //
-          .d_kGen = (DurationClient::dr_t)d_kGen,           //
-          .d_enc = (DurationClient::dr_t)d_enc,             //
-          .d_sendPk = (DurationClient::dr_t)d_sendPk,       //
-          .d_sendParms = (DurationClient::dr_t)d_sendParms, //
-          .d_sendCip = (DurationClient::dr_t)d_sendCip,     //
-          .d_recvBF = (DurationClient::dr_t)d_recvBF,       //
-          .d_recvBD = (DurationClient::dr_t)d_recvBD,       //
-          .d_dec = (DurationClient::dr_t)d_dec,             //
-          .d_stage1 = (DurationClient::dr_t)d_stage1,       //
-          .d_stage2 = (DurationClient::dr_t)d_stage2,       //
-          .d_stage3 = (DurationClient::dr_t)d_stage3,       //
-      }                                                     //
-  };
+  return {tr, du};
 }
