@@ -431,7 +431,6 @@ test_client_opt(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   pplp_printf(isNear ? "near\n" : "far\n");
 
   // parse the time points
-  time_vec ret;
   bytes_to_receive(sockfd_server);
 
   // get the diff of time

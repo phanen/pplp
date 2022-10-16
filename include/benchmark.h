@@ -19,8 +19,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-using time_vec = std::vector<std::chrono::system_clock::time_point>;
-
 struct TrafficLoad {
   using tl_t = uint64_t;
   tl_t c_sendParms; //

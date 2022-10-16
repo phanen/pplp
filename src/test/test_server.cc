@@ -9,14 +9,15 @@ int main(int argc, char *argv[]) {
   cmd_parser.add<string>("host", 'h', "ip of server", false, "127.0.0.1");
   cmd_parser.add<uint16_t>("port", 'p', "port of server", false, 51022,
                            cmdline::range(1, 65535));
-
-  cmd_parser.add<uint64_t>("xb", 'u', "coordinate1 of server", false, 1000,
+  cmd_parser.add<uint64_t>("xb", 'u', "coordinate1 of server", false, 123456888,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
-  cmd_parser.add<uint64_t>("yb", 'v', "coordinate2 of server", false, 1000,
+  cmd_parser.add<uint64_t>("yb", 'v', "coordinate2 of server", false, 132456777,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
 
   cmd_parser.add<uint64_t>("radius", 'r', "radius/thershold", false, 128,
                            cmdline::range(1, 8192));
+
+  cmd_parser.parse_check(argc, argv);
 
   cmd_parser.add<uint64_t>("hkey", 'w', "hash key", false, 128,
                            cmdline::range(1, 8192));
@@ -65,20 +66,12 @@ test_server_leg(int sockfd_client, uint64_t radius, //
                 uint64_t xb, uint64_t yb) {
   auto z = xb * xb + yb * yb;
   auto sq_radius = radius * radius;
+
   pplp_printf("Proximity test start...\n");
   pplp_printf("Server's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xb, yb);
   pplp_printf("Radius(Threshold):\t\t\t\t%" PRIu64 "\n", radius);
 
   auto t_begin = chrono::high_resolution_clock::now();
-
-  // do nothing, inital set ??? online
-  //
-  //
-  //
-  //
-  //
-  //
-  //
 
   auto t_recvParms0 = chrono::high_resolution_clock::now();
 
@@ -180,7 +173,7 @@ test_server_leg(int sockfd_client, uint64_t radius, //
   *(uint64_t *)bf_buf = w;
   bf.serialize(bf_buf + sizeof(uint64_t));
   bytes = send(sockfd_client, bf_buf, bytes, 0);
-  cout << "Send the BF to the client, bytes sent : " << bytes << endl;
+  pplp_printf("Send the BF to the client, bytes sent: %zu\n", size_t(bytes));
   free(bf_buf);
 
   auto t_sendBF1 = chrono::high_resolution_clock::now();
@@ -238,4 +231,5 @@ test_server_opt(int sockfd_client, uint64_t radius, //
   //
 
   //
+  return {{}, {}};
 }
