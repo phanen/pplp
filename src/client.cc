@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
   pplp_printf("Connected to the server,  proximity test start...\n");
   pplp_printf("Client's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
-  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", radius);
+  pplp_printf("Radius:\t\t\t\t%" PRIu64 "\n", radius);
 
   auto begin = chrono::high_resolution_clock::now();
 
@@ -79,9 +79,16 @@ int main(int argc, char *argv[]) {
   parms.set_poly_modulus_degree(poly_modulus_degree);
   parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
   parms.set_plain_modulus(plain_modulus); // sq
-
   // set the context
   SEALContext context(parms);
+
+  // send the parms
+  stringstream stream_parms;
+  parms.save(stream_parms);
+  auto bytes = send(sockfd_server, stream_parms.str().c_str(),
+                    stream_parms.str().length(), 0);
+  pplp_printf("Send parms(context), bytes: %zu \n", size_t(bytes));
+
   if (flag_log)
     print_parameters(context);
   pplp_printf("Parameter validation: %s\n", context.parameter_error_message());
@@ -91,13 +98,6 @@ int main(int argc, char *argv[]) {
   SecretKey sk = keygen.secret_key();
   PublicKey pk;
   keygen.create_public_key(pk);
-
-  // send the parms to the server
-  stringstream stream_parms;
-  parms.save(stream_parms);
-  auto bytes = send(sockfd_server, stream_parms.str().c_str(),
-                    stream_parms.str().length(), 0);
-  pplp_printf("Send parms(context), bytes: %zu \n", size_t(bytes));
 
   // encrypt the data
   Encryptor encryptor(context, pk);

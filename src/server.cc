@@ -53,13 +53,9 @@ int main(int argc, char *argv[]) {
 
   pplp_printf("Proximity test start...\n");
   pplp_printf("Server's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xb, yb);
-  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", radius);
+  pplp_printf("Radius:\t\t\t\t%" PRIu64 "\n", radius);
 
   auto begin = chrono::high_resolution_clock::now();
-
-  // Initialization
-  // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  pplp_printf("Initialization stage...\n");
 
   // Recv the parms
   auto bytes = recv(sockfd_client, buf, sizeof(buf), 0);
@@ -81,7 +77,6 @@ int main(int argc, char *argv[]) {
   bf_parms.random_seed = 0xA5A5A5A5;
   bf_parms.compute_optimal_parameters();
   bloom_filter bf(bf_parms);
-
   // generate the random number
   uint64_t r, s, w; // to fix
   random_bytes((byte *)&r, 4);
@@ -95,7 +90,6 @@ int main(int argc, char *argv[]) {
 
   // receive the encrypted data
   vector<Ciphertext> lst_cipher(3);
-
   // for each ciphertext
   for (size_t id_cipher = 0; id_cipher < 3; id_cipher++) {
     stringstream stream_cipher;
