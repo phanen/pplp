@@ -161,10 +161,10 @@ int connect_to_client(std::string ip, uint16_t port) {
 
   if (getnameinfo((sockaddr *)&sockaddr_client, sizeof(sockaddr_client), host,
                   NI_MAXHOST, serv, NI_MAXSERV, 0) == 0) {
-    pplp_printf("Connected to client: %s:%s\n", host, serv);
+    pplp_printf("Connected to client: %s:%s\n\n", host, serv);
   } else {
     inet_ntop(AF_INET, &sockaddr_client.sin_addr, host, NI_MAXHOST);
-    pplp_printf("Connected to client: %s:%" PRIu16 "\n", host,
+    pplp_printf("Connected to client: %s:%" PRIu16 "\n\n", host,
                 ntohs(sockaddr_client.sin_port));
   }
   return sockfd_client;
