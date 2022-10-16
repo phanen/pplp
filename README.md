@@ -34,3 +34,4 @@ rm build
 - [x] Implementing C/S demo 
 - [ ] ~~Hash function (on blind distance)~~ ??
 - [ ] Set parms of RNG (size of random number) 
+- [ ] Secure parms ??
