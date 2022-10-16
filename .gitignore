@@ -11,5 +11,9 @@ build/
 *.a
 .readme
 
+*.csv
+src/test/dgk/src/libdgk*
+src/test/dgk/src/Tests/test
+
 
 thetest.*
