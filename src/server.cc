@@ -12,8 +12,6 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
-#include <seal/ciphertext.h>
-#include <seal/randomgen.h>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -30,10 +28,9 @@ int main(int argc, char *argv[]) {
   cmd_parser.add<string>("host", 'h', "ip of server", false, "127.0.0.1");
   cmd_parser.add<uint16_t>("port", 'p', "port of server", false, 51022,
                            cmdline::range(1, 65535));
-  // 123456888 132456999
-  cmd_parser.add<uint64_t>("xb", 'u', "coordinate1 of server", false, 1000,
+  cmd_parser.add<uint64_t>("xb", 'u', "coordinate1 of server", false, 123456888,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
-  cmd_parser.add<uint64_t>("yb", 'v', "coordinate2 of server", false, 1000,
+  cmd_parser.add<uint64_t>("yb", 'v', "coordinate2 of server", false, 132465777,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
 
   cmd_parser.add<uint64_t>("radius", 'r', "radius/thershold", false, 128,
@@ -50,13 +47,13 @@ int main(int argc, char *argv[]) {
   uint64_t z = xb * xb + yb * yb;
   uint64_t sq_radius = radius * radius;
 
-  pplp_printf("Server's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xb, yb);
-  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", radius);
-
   int sockfd_client = connect_to_client(ip, port);
   if (sockfd_client < 0) // fail
     return -1;
-  pplp_printf("\nproximity test start...\n");
+
+  pplp_printf("Proximity test start...\n");
+  pplp_printf("Server's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xb, yb);
+  pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", radius);
 
   auto begin = chrono::high_resolution_clock::now();
 
@@ -91,7 +88,6 @@ int main(int argc, char *argv[]) {
   random_bytes((byte *)&s, 4);
   random_bytes((byte *)&w, 2);
   int w_len = get_bitlen(w);
-  cout << "wlne" << w_len << endl;
   for (uint64_t di = 0; di < sq_radius; ++di) {
     uint64_t bd = s * (di + r); // overflow ??
     bf.insert((bd << uint64_t(w_len)) | w);

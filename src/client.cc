@@ -11,7 +11,6 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
-#include <seal/plaintext.h>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -72,6 +71,7 @@ int main(int argc, char *argv[]) {
   pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", radius);
 
   auto begin = chrono::high_resolution_clock::now();
+
   // set the parms
   EncryptionParameters parms(scheme_type::bfv);
   size_t poly_modulus_degree = 1ull << poly_modulus_degree_bits;
@@ -105,7 +105,8 @@ int main(int argc, char *argv[]) {
   encryptor.encrypt(Plaintext(uint64_to_hex_string(u)), c1);
   encryptor.encrypt(Plaintext(uint64_to_hex_string(xa << 1)), c2);
   encryptor.encrypt(Plaintext(uint64_to_hex_string(ya << 1)), c3);
-  // send the encrypted data the server
+
+  // send the ciphertext
   vector<Ciphertext> lst_cipher{c1, c2, c3};
   for (size_t id_cipher = 0; id_cipher < 3; id_cipher++) {
     stringstream stream_cipher;
@@ -131,7 +132,7 @@ int main(int argc, char *argv[]) {
   //
   free(bf_buf);
 
-  // receive the encrypted data
+  // receive the encrypted blind distance
   stringstream stream_cipher;
   bytes = recv_by_stream(sockfd_server, stream_cipher);
   Ciphertext cipher_blind_distance;

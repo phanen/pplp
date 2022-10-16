@@ -96,10 +96,10 @@ int main(int argc, char *argv[]) {
   bloom_filter bf(bf_parms);
 
   // insert key-hashed blind distance
-  int sq_len = get_bitlen(sq_radius);
-  uint64_t r = randombytes_uniform(56 - sq_len);
-  uint64_t s = randombytes_uniform(sq_len);
-  uint64_t w = randombytes_uniform(256);
+  uint64_t r, s, w; // to fix
+  random_bytes((byte *)&r, 4);
+  random_bytes((byte *)&s, 4);
+  random_bytes((byte *)&w, 2);
   int w_len = get_bitlen(w);
   for (uint64_t di = 0; di < sq_radius; ++di) {
     uint64_t bd = s * (di + r);
