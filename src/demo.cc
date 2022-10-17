@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
   // B initialize bloom filter
   bloom_parameters bf_parms;
   bf_parms.projected_element_count = sq_radius;
-  bf_parms.false_positive_probability = 0.0001; // 1 in 10000
+  bf_parms.false_positive_probability = 0.000001; // 1 in 10000
   bf_parms.random_seed = 0xA5A5A5A5;
   bf_parms.compute_optimal_parameters();
   bloom_filter bf(bf_parms);
