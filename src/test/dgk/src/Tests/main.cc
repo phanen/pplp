@@ -73,19 +73,20 @@ int dgk_example() {
 } /* ----------  end of function main  ---------- */
 
 int pplp(const char *filename, uint64_t radius, int makehead) {
-  uint64_t xa = 2;
-  uint64_t ya = 2;
-  uint64_t xb = 3;
-  uint64_t yb = 5;
+  uint64_t xa = 123123;
+  uint64_t ya = 123456;
+  uint64_t xb = 123321;
+  uint64_t yb = 123654;
   uint64_t sq_radius = radius * radius;
 
-  // cout << "A's horizontal coordinates:\t" << xa << endl;
-  // cout << "A's vertical coordinates:\t" << ya << endl;
-  // cout << "B's horizontal coordinates:\t" << xb << endl;
-  // cout << "B's vertical coordinates:\t" << yb << endl;
   cout << "radius(threshold):\t" << radius << endl;
   mpz_t tmp1, tmp2;
   mpz_inits(tmp1, tmp2, NULL);
+
+  cout << "A's horizontal coordinates:\t" << xa << endl;
+  cout << "A's vertical coordinates:\t" << ya << endl;
+  cout << "B's horizontal coordinates:\t" << xb << endl;
+  cout << "B's vertical coordinates:\t" << yb << endl;
 
   auto t_begin = chrono::high_resolution_clock::now();
 
@@ -209,6 +210,8 @@ int pplp(const char *filename, uint64_t radius, int makehead) {
 
   auto t_Adec0 = chrono::high_resolution_clock::now();
 
+  // pplp_printf("Time measured: %.3f seconds.\n\n", elapsed.count() * 1e-9);
+
   // A
   mpz_t bd;
   mpz_init(bd);
@@ -218,9 +221,9 @@ int pplp(const char *filename, uint64_t radius, int makehead) {
   mpz_ior(bd, bd, w);
   // gmp_printf ("%Zd\n", bd);
 
-  auto t_Adec1 = chrono::high_resolution_clock::now();
-
   int isNear = bf.contains(mpz_get_ui(bd));
+
+  auto t_Adec1 = chrono::high_resolution_clock::now();
   auto end = chrono::high_resolution_clock::now();
 
   double d_AkGen = get_diff(t_AkGen1, t_AkGen0);
@@ -240,6 +243,16 @@ int pplp(const char *filename, uint64_t radius, int makehead) {
   double d_B3 = d_BencCz + d_BhomoCalc;
   double d_Atotal = d_A1 + d_A2 + d_A3;
   double d_Btotal = d_B1 + d_B2 + d_B3;
+
+  cout << "d_AkGen\t\t\t" << d_AkGen * 1e-6 << "ms" << endl;
+  cout << "d_ApreClac\t\t" << d_ApreClac * 1e-6 << "ms" << endl;
+  cout << "d_Aenc\t\t\t" << d_Aenc * 1e-6 << "ms" << endl;
+  cout << "d_Adec\t\t\t" << d_Adec * 1e-6 << "ms" << endl;
+  cout << "d_BsetBF\t\t" << d_BsetBF * 1e-6 << "ms" << endl;
+  cout << "d_BencCr\t\t" << d_BencCr * 1e-6 << "ms" << endl;
+  cout << "d_BencCz\t\t" << d_BencCz * 1e-6 << "ms" << endl;
+  cout << "d_BhomoCalc\t\t" << d_BhomoCalc * 1e-6 << "ms" << endl;
+  cout << (isNear ? "near" : "far") << endl;
 
   CSVWriter csv(",");
   if (makehead)
@@ -280,9 +293,6 @@ int pplp(const char *filename, uint64_t radius, int makehead) {
                << d_Btotal;   //
 
   csv.writeToFile(filename, !makehead);
-
-  cout << (isNear ? "near" : "far") << endl;
-  // pplp_printf("Time measured: %.3f seconds.\n\n", elapsed.count() * 1e-9);
 
   return 1;
 }
