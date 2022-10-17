@@ -43,6 +43,7 @@ int main(int argc, char *argv[]) {
 
   cmd_parser.parse_check(argc, argv);
 
+  cout << "sizeof(uint64_t)" << sizeof(uint64_t) << endl;
   // debug
   Plaintext pdbg;
   uint64_t xa = cmd_parser.get<uint64_t>("xa");
@@ -102,7 +103,9 @@ int main(int argc, char *argv[]) {
   for (uint64_t di = 0; di < sq_radius; ++di) {
     uint64_t bd = s * (di + r);
     bf.insert((bd << uint64_t(w_len)) | w);
+    cout << hex << bd << ' ';
   }
+  cout << endl;
 
   cout << hex << r * s << dec << endl;
 
@@ -137,9 +140,10 @@ int main(int argc, char *argv[]) {
   Plaintext plain_blind_distance;
   decryptor.decrypt(c1, plain_blind_distance);
 
+  cout << plain_blind_distance.to_string() << endl;
   uint64_t blind_distance =
       hex_string_to_uint(plain_blind_distance.to_string());
-  cout << "blind_distance: " << blind_distance << endl;
+  cout << "blind_distance: " << hex << blind_distance << dec << endl;
 
   bool isNear = bf.contains((blind_distance << uint64_t(w_len)) | w);
   auto end = std::chrono::high_resolution_clock::now();
