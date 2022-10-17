@@ -1,5 +1,4 @@
 #include "seal/seal.h"
-// #include "sodium.h"
 
 #include "bloomfilter.h"
 #include "cmdline.h"

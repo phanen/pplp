@@ -1,11 +1,9 @@
-#include <sodium/randombytes.h>
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "bloomfilter.h"
 #include "cmdline.h"
 #include "examples.h" // print_parameter
 #include "seal/seal.h"
-#include "sodium.h"
 #include "util.h"
 
 #include <chrono>
