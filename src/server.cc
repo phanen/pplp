@@ -63,9 +63,7 @@ int main(int argc, char *argv[]) {
   // set the context
   EncryptionParameters parms;
   stringstream stream_parms(string((char *)buf, bytes));
-  cout << "before load" << endl;
   parms.load(stream_parms);
-  cout << "after load" << endl;
 
   SEALContext context(parms);
   if (flag_log)
@@ -96,7 +94,10 @@ int main(int argc, char *argv[]) {
   for (size_t id_cipher = 0; id_cipher < 3; id_cipher++) {
     stringstream stream_cipher;
     bytes = recv_by_stream(sockfd_client, stream_cipher);
+    cout << "before load" << endl;
     lst_cipher[id_cipher].load(context, stream_cipher);
+    cout << "after load" << endl;
+
     pplp_printf("Recv the ciphertext %zu, bytes: %zu\n", id_cipher,
                 size_t(bytes));
   }
