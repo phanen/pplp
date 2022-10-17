@@ -63,7 +63,10 @@ int main(int argc, char *argv[]) {
   // set the context
   EncryptionParameters parms;
   stringstream stream_parms(string((char *)buf, bytes));
+  cout << "before load" << endl;
   parms.load(stream_parms);
+  cout << "after load" << endl;
+
   SEALContext context(parms);
   if (flag_log)
     print_parameters(context);
