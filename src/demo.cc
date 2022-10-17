@@ -104,12 +104,13 @@ int main(int argc, char *argv[]) {
     bf.insert((bd << uint64_t(w_len)) | w);
   }
 
-  Ciphertext cr;
-  encryptor.encrypt(Plaintext(uint64_to_hex_string(r * s)), cr);
+  cout << hex << r * s << dec << endl;
 
   // A ---------------
   uint64_t u = xa * xa + ya * ya;
   Ciphertext c1, c2, c3;
+  // cout << 1 << endl;
+
   Plaintext p1(uint64_to_hex_string(u));
   Plaintext p2(uint64_to_hex_string(xa << 1));
   Plaintext p3(uint64_to_hex_string(ya << 1));
