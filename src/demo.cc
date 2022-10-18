@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
   cmd_parser.add<size_t>("poly_modulus_degree", 'd',
                          "set degree of polynomial(2^d)", false, 13,
                          cmdline::range(12, 15));
-
+  cmd_parser.add<int>("print_bf", 'g', "print bf", false, 0);
+  // cmdline::range(0, 1000));
   cmd_parser.parse_check(argc, argv);
 
   cout << "sizeof(uint64_t)" << sizeof(uint64_t) << endl;
@@ -53,7 +54,7 @@ int main(int argc, char *argv[]) {
 
   uint64_t radius = cmd_parser.get<uint64_t>("radius");
   uint64_t sq_radius = radius * radius;
-
+  int print_bf = cmd_parser.get<int>("print_bf");
   pplp_printf("Client's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
   pplp_printf("Server's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xb, yb);
   pplp_printf("Radius(Threshold):\t\t\t%" PRIu64 "\n", radius);
@@ -76,13 +77,21 @@ int main(int argc, char *argv[]) {
        << context.parameter_error_message() << endl;
 
   KeyGenerator keygen(context);
-  SecretKey secret_key = keygen.secret_key();
-  PublicKey public_key;
-  keygen.create_public_key(public_key);
+  SecretKey sk = keygen.secret_key();
+  PublicKey pk;
 
-  Encryptor encryptor(context, public_key);
+  keygen.create_public_key(pk);
+
+  cout << "stream_pk head" << endl;
+  stringstream stream_pk;
+  pk.save(stream_pk);
+  pk.load(context, stream_pk);
+  cout << "stream_pk tail" << endl;
+  // stream_cipher << pk << endl;
+
+  Encryptor encryptor(context, pk);
   Evaluator evaluator(context);
-  Decryptor decryptor(context, secret_key);
+  Decryptor decryptor(context, sk);
   RelinKeys relin_keys;
   keygen.create_relin_keys(relin_keys);
 
@@ -103,7 +112,8 @@ int main(int argc, char *argv[]) {
   for (uint64_t di = 0; di < sq_radius; ++di) {
     uint64_t bd = s * (di + r);
     bf.insert((bd << uint64_t(w_len)) | w);
-    cout << hex << bd << ' ';
+    if (print_bf)
+      cout << hex << bd << ' ';
   }
   cout << endl;
 
@@ -113,7 +123,6 @@ int main(int argc, char *argv[]) {
   uint64_t u = xa * xa + ya * ya;
   Ciphertext c1, c2, c3;
   // cout << 1 << endl;
-
   Plaintext p1(uint64_to_hex_string(u));
   Plaintext p2(uint64_to_hex_string(xa << 1));
   Plaintext p3(uint64_to_hex_string(ya << 1));
@@ -121,6 +130,12 @@ int main(int argc, char *argv[]) {
   encryptor.encrypt(p1, c1);
   encryptor.encrypt(p2, c2);
   encryptor.encrypt(p3, c3);
+
+  cout << "stream_cipher head" << endl;
+  stringstream stream_cipher;
+  c1.save(stream_cipher);
+  c1.load(context, stream_cipher);
+  cout << "stream_cipher begin" << endl;
 
   // B ----------------
   uint64_t z = xb * xb + yb * yb;
