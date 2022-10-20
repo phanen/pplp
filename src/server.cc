@@ -88,35 +88,44 @@ int main(int argc, char *argv[]) {
     bf.insert((bd << uint64_t(w_len)) | w);
   }
 
-  // receive the encrypted data
-  vector<Ciphertext> lst_cipher(3);
   // for each ciphertext
-  for (size_t id_cipher = 0; id_cipher < 3; id_cipher++) {
-    stringstream stream_cipher;
-    bytes = recv_by_stream(sockfd_client, stream_cipher);
-    cout << "before load" << endl;
-    lst_cipher[id_cipher].load(context, stream_cipher);
-    cout << "after load" << endl;
+  Ciphertext c0, c1, c2;
+  stringstream stream_cipher0, stream_cipher1, stream_cipher2;
 
-    pplp_printf("Recv the ciphertext %zu, bytes: %zu\n", id_cipher,
-                size_t(bytes));
-  }
+  bytes = recv_by_stream(sockfd_client, stream_cipher0);
+  cout << "before load0" << endl;
+  c0.load(context, stream_cipher0);
+  cout << "after load0" << endl;
+  pplp_printf("Recv the ciphertext %zu, bytes: %zu\n", 0, size_t(bytes));
+
+  bytes = recv_by_stream(sockfd_client, stream_cipher1);
+  cout << "before load1" << endl;
+  c1.load(context, stream_cipher1);
+  cout << "after load1" << endl;
+  pplp_printf("Recv the ciphertext %zu, bytes: %zu\n", 1, size_t(bytes));
+
+  bytes = recv_by_stream(sockfd_client, stream_cipher2);
+  cout << "before load2" << endl;
+  c2.load(context, stream_cipher2);
+  cout << "after load2" << endl;
+  pplp_printf("Recv the ciphertext %zu, bytes: %zu\n", 2, size_t(bytes));
 
   //  homomorphic evaluation
   Evaluator evaluator(context);
   Plaintext plain_z(uint64_to_hex_string(z));
   Plaintext plain_xb(uint64_to_hex_string(xb));
   Plaintext plain_yb(uint64_to_hex_string(yb));
-  evaluator.add_plain_inplace(lst_cipher[0], plain_z);
-  evaluator.multiply_plain_inplace(lst_cipher[1], plain_xb);
-  evaluator.multiply_plain_inplace(lst_cipher[2], plain_yb);
-  evaluator.add_inplace(lst_cipher[1], lst_cipher[2]);
-  evaluator.sub_inplace(lst_cipher[0], lst_cipher[1]);
-  evaluator.multiply_plain_inplace(lst_cipher[0],
-                                   Plaintext(uint64_to_hex_string(s)));
-  evaluator.add_plain_inplace(lst_cipher[0],
-                              Plaintext(uint64_to_hex_string(s * r)));
+  cout << "hhhh" << endl;
 
+  evaluator.add_plain_inplace(c0, plain_z);
+  evaluator.multiply_plain_inplace(c1, plain_xb);
+  evaluator.multiply_plain_inplace(c2, plain_yb);
+
+  cout << "hhhh" << endl;
+  evaluator.add_inplace(c1, c2);
+  evaluator.sub_inplace(c0, c1);
+  evaluator.multiply_plain_inplace(c0, Plaintext(uint64_to_hex_string(s)));
+  evaluator.add_plain_inplace(c0, Plaintext(uint64_to_hex_string(s * r)));
   // send the bloom filter and hash key (w || BF)
   bytes = sizeof(uint64_t) + bf.compute_serialization_size();
   bytes_to_send(sockfd_client, bytes);
@@ -129,7 +138,7 @@ int main(int argc, char *argv[]) {
 
   // send the encrypted blind distance
   stringstream stream_cipher;
-  lst_cipher[0].save(stream_cipher);
+  c0.save(stream_cipher);
   bytes_to_send(sockfd_client, stream_cipher.str().length());
   bytes = send(sockfd_client, stream_cipher.str().c_str(),
                stream_cipher.str().length(), 0);
