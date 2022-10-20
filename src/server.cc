@@ -115,13 +115,9 @@ int main(int argc, char *argv[]) {
   Plaintext plain_z(uint64_to_hex_string(z));
   Plaintext plain_xb(uint64_to_hex_string(xb));
   Plaintext plain_yb(uint64_to_hex_string(yb));
-  cout << "hhhh" << endl;
-
   evaluator.add_plain_inplace(c0, plain_z);
   evaluator.multiply_plain_inplace(c1, plain_xb);
   evaluator.multiply_plain_inplace(c2, plain_yb);
-
-  cout << "hhhh" << endl;
   evaluator.add_inplace(c1, c2);
   evaluator.sub_inplace(c0, c1);
   evaluator.multiply_plain_inplace(c0, Plaintext(uint64_to_hex_string(s)));

@@ -62,18 +62,18 @@ std::size_t bytes_to_receive(int sockfd) {
 
 // send by stream (must tell the peer how many bytes)
 ssize_t send_by_stream(int sockfd, std::stringstream &ss) {
-  std::cout << "before tell" << std::endl;
+  // std::cout << "before tell" << std::endl;
   bytes_to_send(sockfd, ss.str().length());
-  std::cout << "after tell" << std::endl;
+  // std::cout << "after tell" << std::endl;
   ssize_t bytes = send(sockfd, ss.str().c_str(), ss.str().length(), 0);
   return bytes;
 }
 
 // recv by stream
 ssize_t recv_by_stream(int sockfd, std::stringstream &ss) {
-  std::cout << "before tell" << std::endl;
+  // std::cout << "before tell" << std::endl;
   auto bytes = bytes_to_receive(sockfd);
-  std::cout << "after tell" << std::endl;
+  // std::cout << "after tell" << std::endl;
 
   for (size_t remain_bytes = bytes; remain_bytes != 0;) {
     memset(buf, 0, sizeof(buf));
@@ -82,7 +82,7 @@ ssize_t recv_by_stream(int sockfd, std::stringstream &ss) {
     // if fail in half
     if (cur_bytes < 0)
       return cur_bytes; // instead... (bytes - remain_bytes)
-    std::cout << cur_bytes << std::endl;
+    // std::cout << cur_bytes << std::endl;
 
     ss << std::string(buf, cur_bytes);
     remain_bytes -= cur_bytes;
