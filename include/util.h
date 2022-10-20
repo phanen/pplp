@@ -121,6 +121,9 @@ int connect_to_server(std::string ip, uint16_t port) {
 int connect_to_client(std::string ip, uint16_t port) {
   // crete a socket
   int sockfd_listening = socket(AF_INET, SOCK_STREAM, 0);
+  int option = 1;
+  setsockopt(sockfd_listening, SOL_SOCKET, SO_REUSEADDR, &option,
+             sizeof(option));
   if (sockfd_listening < 0) {
     perror("socket");
     return -1;
