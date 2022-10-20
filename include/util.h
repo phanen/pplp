@@ -82,6 +82,8 @@ ssize_t recv_by_stream(int sockfd, std::stringstream &ss) {
     // if fail in half
     if (cur_bytes < 0)
       return cur_bytes; // instead... (bytes - remain_bytes)
+    std::cout << cur_bytes << std::endl;
+
     ss << std::string(buf, cur_bytes);
     remain_bytes -= cur_bytes;
   }
