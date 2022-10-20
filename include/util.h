@@ -42,7 +42,7 @@ auto pplp_printf = flag_log ? std::printf : dummy_printf;
 
 // - coordination of pre-send / pre-recv
 // - handle the dynamic transmissions
-constexpr int SIZE_BUFFER = 4096;
+constexpr int SIZE_BUFFER = 128;
 char buf[SIZE_BUFFER];
 
 // pre-send the bytes length
