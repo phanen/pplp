@@ -1,3 +1,5 @@
+#include <sstream>
+#include <sys/socket.h>
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "bloomfilter.h"
@@ -82,23 +84,25 @@ int main(int argc, char *argv[]) {
 
   keygen.create_public_key(pk);
 
-  cout << "stream_pk head" << endl;
+  cout << "head!!!!!!!!!!!!!!!!!" << endl;
   stringstream stream_pk;
   pk.save(stream_pk);
-  pk.load(context, stream_pk);
-  cout << "stream_pk tail" << endl;
+  // auto a = ;
+  auto len = stream_pk.str().length();
+  stringstream stream_spk(string(stream_pk.str().c_str(), len));
+
+  pk.load(context, stream_spk);
+  cout << "tail!!!!!!!!!!!!!!!!" << endl;
   // stream_cipher << pk << endl;
 
   Encryptor encryptor(context, pk);
   Evaluator evaluator(context);
   Decryptor decryptor(context, sk);
-  RelinKeys relin_keys;
-  keygen.create_relin_keys(relin_keys);
 
   // B initialize bloom filter
   bloom_parameters bf_parms;
   bf_parms.projected_element_count = sq_radius;
-  bf_parms.false_positive_probability = 0.000001; // 1 in 10000
+  bf_parms.false_positive_probability = 0.000000000001; // 1 in 10000
   bf_parms.random_seed = 0xA5A5A5A5;
   bf_parms.compute_optimal_parameters();
   bloom_filter bf(bf_parms);
