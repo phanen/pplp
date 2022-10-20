@@ -29,6 +29,32 @@ rm build
   - Maybe problem of `gcc` 
 - Lib of seal can be compiled by `msvc-cl`, `mingw-gcc` or `llvm-clang`. 
 
+## Guide
+### Executable
+- `./demo` -- Local
+- `./server` -- C/**S**
+- `./client` -- **C**/S
+- `./ts` -- benchmark
+- `./tc` -- benchmark
+
+Benchmark will be output as `*.csv`.
+
+### Get help
+Example
+```bash
+./server --help
+```
+```
+usage: ./server [options] ... 
+options:
+  -h, --host      ip of server (string [=127.0.0.1])
+  -p, --port      port of server (unsigned short [=51022])
+  -u, --xb        coordinate1 of server (unsigned long [=123456888])
+  -v, --yb        coordinate2 of server (unsigned long [=132465777])
+  -r, --radius    radius/thershold (unsigned long [=128])
+  -?, --help      print this message
+```
+
 ## To Do
 - [x] Add serialization for Bloom Filter
 - [x] Implementing C/S demo 
