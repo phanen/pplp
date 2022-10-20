@@ -88,11 +88,15 @@ int main(int argc, char *argv[]) {
   stringstream stream_pk;
   pk.save(stream_pk);
   // auto a = ;
-  auto len = stream_pk.str().length();
-  stringstream stream_spk(string(stream_pk.str().c_str(), len));
+  // auto len = stream_pk.str().length();
+  // stringstream stream_spk(string(stream_pk.str().c_str(), len));
 
-  pk.load(context, stream_spk);
-  cout << "tail!!!!!!!!!!!!!!!!" << endl;
+  // int socks = connect_to_client("127.0.0.1", 12345);
+
+  // int sockc = connect_to_server("127.0.0.1", 12345);
+
+  // pk.load(context, stream_spk);
+  // cout << "tail!!!!!!!!!!!!!!!!" << endl;
   // stream_cipher << pk << endl;
 
   Encryptor encryptor(context, pk);
