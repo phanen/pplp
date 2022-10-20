@@ -81,7 +81,7 @@ test_client_leg(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   auto sq_raduis = radius * radius;
 
   pplp_printf("Proximity test start...\n");
-  pplp_printf("Cerver's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
+  pplp_printf("Client's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
   pplp_printf("Radius:\t\t\t\t%" PRIu64 "\n", radius);
 
   uint64_t c_total = 0;
@@ -288,7 +288,7 @@ test_client_opt(int sockfd_server, uint64_t radius, string ip, uint16_t port,
   auto sq_raduis = radius * radius;
 
   pplp_printf("Proximity test start...\n");
-  pplp_printf("Cerver's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
+  pplp_printf("Client's coordinates:\t(%" PRIu64 ", %" PRIu64 ")\n", xa, ya);
   pplp_printf("Radius:\t\t\t\t%" PRIu64 "\n", radius);
 
   uint64_t c_total = 0;
