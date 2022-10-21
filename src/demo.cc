@@ -27,9 +27,9 @@ int main(int argc, char *argv[]) {
   cmd_parser.add<uint64_t>("ya", 'y', "coordinate2 of client", false, 1212,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
 
-  cmd_parser.add<uint64_t>("xb", 'u', "coordinate1 of server", false, 1000,
+  cmd_parser.add<uint64_t>("xb", 'x', "coordinate1 of server", false, 1000,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
-  cmd_parser.add<uint64_t>("yb", 'v', "coordinate2 of server", false, 1000,
+  cmd_parser.add<uint64_t>("yb", 'y', "coordinate2 of server", false, 1000,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
 
   cmd_parser.add<uint64_t>("radius", 'r', "radius/thershold", false, 128,

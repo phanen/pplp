@@ -27,13 +27,16 @@ int main(int argc, char *argv[]) {
   cmd_parser.add<string>("host", 'h', "ip of server", false, "127.0.0.1");
   cmd_parser.add<uint16_t>("port", 'p', "port of server", false, 51022,
                            cmdline::range(1, 65535));
-  cmd_parser.add<uint64_t>("xb", 'u', "coordinate1 of server", false, 123456888,
+  cmd_parser.add<uint64_t>("xb", 'x', "coordinate1 of server", false, 123456888,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
-  cmd_parser.add<uint64_t>("yb", 'v', "coordinate2 of server", false, 132465777,
+  cmd_parser.add<uint64_t>("yb", 'y', "coordinate2 of server", false, 132465777,
                            cmdline::range(0ul, 1ul << 27)); // 134217728
 
   cmd_parser.add<uint64_t>("radius", 'r', "radius/thershold", false, 128,
                            cmdline::range(1, 8192));
+
+  // cmd_parser.add<uint64_t>("gps", 'g', "get postion by GPS", false, 128,
+  //                          cmdline::range(1, 8192));
 
   cmd_parser.parse_check(argc, argv);
 
