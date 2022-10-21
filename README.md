@@ -55,6 +55,13 @@ options:
   -?, --help      print this message
 ```
 
+### GPS support
+`python3 ./src/get_pos.py` will print cmdline flavor coordinate.
+To use in pplp:
+```
+./build/server $(python3 ./src/get_pos.py)
+```
+
 ## To Do
 - [x] Add serialization for Bloom Filter
 - [x] Implementing C/S demo 
