@@ -92,7 +92,7 @@ ssize_t recv_by_stream(int sockfd, std::stringstream &ss) {
 
 int connect_to_server(std::string ip, uint16_t port) {
   // create a socket for server
-  int sockfd_server = socket(AF_INET, SOCK_STREAM, 0);
+  int sockfd_server = socket(AF_INET6, SOCK_STREAM, 0);
   if (sockfd_server < 0) {
     perror("socket");
     return sockfd_server; // or -1
@@ -102,7 +102,7 @@ int connect_to_server(std::string ip, uint16_t port) {
   // connect to server
   struct sockaddr_in sockaddr_server;
   memset(&sockaddr_server, 0, sizeof(sockaddr_server));
-  sockaddr_server.sin_family = AF_INET;
+  sockaddr_server.sin_family = AF_INET6;
   sockaddr_server.sin_port = htons(port);
   sockaddr_server.sin_addr.s_addr = inet_addr(ip.c_str());
 
@@ -120,7 +120,7 @@ int connect_to_server(std::string ip, uint16_t port) {
 // specify server's listening sock(ip + port)
 int connect_to_client(std::string ip, uint16_t port) {
   // crete a socket
-  int sockfd_listening = socket(AF_INET, SOCK_STREAM, 0);
+  int sockfd_listening = socket(AF_INET6, SOCK_STREAM, 0);
   int option = 1;
   setsockopt(sockfd_listening, SOL_SOCKET, SO_REUSEADDR, &option,
              sizeof(option));
@@ -133,7 +133,7 @@ int connect_to_client(std::string ip, uint16_t port) {
   // bind the ip address and port to a socket
   sockaddr_in myaddr;
   memset(&myaddr, 0, sizeof(myaddr));
-  myaddr.sin_family = AF_INET;
+  myaddr.sin_family = AF_INET6;
   myaddr.sin_port = htons(port);
   myaddr.sin_addr.s_addr = inet_addr(ip.c_str());
   int ret = bind(sockfd_listening, (struct sockaddr *)&myaddr, sizeof(myaddr));
