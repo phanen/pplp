@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   uint64_t z = xb * xb + yb * yb;
   uint64_t sq_radius = radius * radius;
 
-  int sockfd_client = connect_to_client(ip, port);
+  int sockfd_client = connect_to_client(ip, port, AF_INET);
   if (sockfd_client < 0)
     return sockfd_client;
 

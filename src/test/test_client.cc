@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
       cmd_parser.get<size_t>("poly_modulus_degree");
   size_t plain_modulus_bits = cmd_parser.get<size_t>("plain_modulus_bits");
 
-  int sockfd_server = connect_to_server(ip, port);
+  int sockfd_server = connect_to_server(ip, port, AF_INET);
   if (sockfd_server < 0)
     return sockfd_server; // force exit
 
