@@ -14,9 +14,13 @@ cmake ..
 make
 ```
 
+Specify compiler and build toolchains
+```
+CC=clang CXX=clang++ cmake .. -G=...
+```
 
 ### Windows
-Maybe surport non-interactive version only (C/S demo using posix).
+Surport only non-interactive version(socket using posix).
 
 ```bash
 cmake -S . -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
@@ -31,13 +35,11 @@ rm build
 
 ## Guide
 ### Executable
-- `./demo` -- Local
-- `./server` -- C/**S**
-- `./client` -- **C**/S
-- `./ts` -- benchmark
-- `./tc` -- benchmark
-
-Benchmark will be output as `*.csv`.
+- `./demo` -- Local version to test the protocol
+- `./server && ./client`
+  - C/S version
+- `./ts && ./tc`
+  - Generate Benchmark in `*.csv` format.
 
 ### Get help
 Example
@@ -65,6 +67,6 @@ To use in pplp:
 ## To Do
 - [x] Add serialization for Bloom Filter
 - [x] Implementing C/S demo 
-- [ ] ~~Hash function (on blind distance)~~ ??
-- [ ] Set parms of RNG (size of random number) 
-- [ ] Secure parms ??
+- [ ] ~~Hash function (on blind distance)~~
+- [ ] ~~Set parms of RNG (size of random number)~~
+- [ ] ~~Secure parms~~
