@@ -210,6 +210,10 @@ test_server_leg(int sockfd_client, uint64_t radius, //
   du.d_homoCalc = get_diff(t_homoCalc1, t_homoCalc0); //
   du.d_sendBD = get_diff(t_sendBD1, t_sendBD0);       //
 
+  // du.d_stage1 = du.d_setParms + du.d_setBF; //
+  // du.d_stage2 = du.d_homoCalc;              //
+  // du.d_stage3 = 0.00;                       //
+
   du.d_stage1 = du.d_setParms;                              //
   du.d_stage2 = du.d_setBF;                                 //
   du.d_stage3 = du.d_homoCalc;                              //
