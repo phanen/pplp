@@ -45,14 +45,12 @@ int main(int argc, char *argv[]) {
 
   cmd_parser.add("ipv4", '4', "ipv4");
   cmd_parser.add("ipv6", '6', "ipv6");
-
   cmd_parser.parse_check(argc, argv);
 
   // radius
   string ip = cmd_parser.get<string>("host");
   uint16_t port = cmd_parser.get<uint16_t>("port");
-  int domain = AF_INET6; // cmd_parser.exist("ipv4") ? AF_INET : AF_INET6;
-
+  int domain = AF_INET; // cmd_parser.exist("ipv4") ? AF_INET : AF_INET6;
   uint64_t xa = cmd_parser.get<uint64_t>("xa");
   uint64_t ya = cmd_parser.get<uint64_t>("ya");
   uint64_t radius = cmd_parser.get<uint64_t>("radius");
