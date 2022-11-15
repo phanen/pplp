@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
   cmd_parser.add<uint64_t>("radius", 'r', "radius/thershold", false, 128,
                            cmdline::range(1, 8192));
 
-  cmd_parser.add("ipv4", '4', "ipv4");
-  cmd_parser.add("ipv6", '6', "ipv6");
+  // cmd_parser.add("ipv4", '4', "ipv4");
+  cmd_parser.add("ipv6", '6', "ipv6", 0, 0);
 
   // cmd_parser.add<uint64_t>("gps", 'g', "get postion by GPS", false, 128,
   //                          cmdline::range(1, 8192));
@@ -46,7 +46,8 @@ int main(int argc, char *argv[]) {
   string ip = cmd_parser.get<string>("host");
   uint16_t port = cmd_parser.get<uint16_t>("port");
 
-  int domain = AF_INET6;
+  int domain = cmd_parser.exist("ipv6") ? AF_INET : AF_INET6;
+
   uint64_t xb = cmd_parser.get<uint64_t>("xb");
   uint64_t yb = cmd_parser.get<uint64_t>("yb");
   uint64_t radius = cmd_parser.get<uint64_t>("radius");
