@@ -99,6 +99,7 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
   if (domain == AF_INET) {
     // create a socket for server
     int sockfd_server = socket(AF_INET, SOCK_STREAM, 0);
+    std::cout << "sockfd_server" << std::endl;
 
     if (sockfd_server < 0) {
       perror("socket");
@@ -112,6 +113,8 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
     sockaddr_server.sin_port = htons(port);
     sockaddr_server.sin_addr.s_addr = inet_addr(ip.c_str());
 
+    std::cout << "sockfd_server" << std::endl;
+
     int conn_result =
         connect(sockfd_server, (struct sockaddr *)&sockaddr_server,
                 sizeof(sockaddr_server));
@@ -120,9 +123,12 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
       close(sockfd_server);
       return -1;
     }
+    std::cout << "conn_result" << std::endl;
+
     return sockfd_server;
-  } //
-  else if (domain == AF_INET6) {
+  }    //
+  else // if (domain == AF_INET6) {
+  {
     int sockfd_server = socket(AF_INET6, SOCK_STREAM, 0);
 
     if (sockfd_server < 0) {
@@ -217,8 +223,9 @@ int connect_to_client(std::string ip, uint16_t port, int domain) {
                   ntohs(sockaddr_client.sin_port));
     }
     return sockfd_client;
-  } //
-  else if (domain == AF_INET6) {
+  }    //
+  else // if (domain == AF_INET6) {
+  {
     int sockfd_listening = socket(AF_INET6, SOCK_STREAM, 0);
     int option = 1;
     setsockopt(sockfd_listening, SOL_SOCKET, SO_REUSEADDR, &option,
