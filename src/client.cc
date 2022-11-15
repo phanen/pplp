@@ -9,6 +9,7 @@
 #include <cinttypes>
 #include <cstdint>
 #include <cstring>
+#include <ios>
 #include <iostream>
 #include <vector>
 
@@ -44,7 +45,8 @@ int main(int argc, char *argv[]) {
                          cmdline::range(12, 15));
 
   // cmd_parser.add("ipv4", '4', "ipv4");
-  cmd_parser.add("ipv6", '6', "ipv6");
+  cmd_parser.add("ipv6", '6', "ipv6", 0, 0);
+
   cmd_parser.parse_check(argc, argv);
 
   // radius
@@ -53,7 +55,7 @@ int main(int argc, char *argv[]) {
   // int domain = AF_INET6; // cmd_parser.exist("ipv4") ? AF_INET : AF_INET6;
 
   int domain = cmd_parser.exist("ipv6") ? AF_INET : AF_INET6;
-
+  cout << boolalpha << cmd_parser.exist("ipv6") << endl;
   uint64_t xa = cmd_parser.get<uint64_t>("xa");
   uint64_t ya = cmd_parser.get<uint64_t>("ya");
   uint64_t radius = cmd_parser.get<uint64_t>("radius");
