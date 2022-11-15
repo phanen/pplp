@@ -137,12 +137,32 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
     }
 
     // connect to server
-    struct sockaddr_in6 sockaddr_server;
+    // struct sockaddr_in6 sockaddr_server;
+    // memset(&sockaddr_server, 0, sizeof(sockaddr_server));
+    // sockaddr_server.sin6_family = AF_INET6;
+    // sockaddr_server.sin6_port = htons(port);
+    // // inet_pton(AF_INET6, ip.c_str(),
+    //           &sockaddr_server.sin6_addr); // 绑定指定地址， ipv6
+
+    sockaddr_in6 sockaddr_server;
+
     memset(&sockaddr_server, 0, sizeof(sockaddr_server));
     sockaddr_server.sin6_family = AF_INET6;
     sockaddr_server.sin6_port = htons(port);
-    inet_pton(AF_INET6, ip.c_str(),
-              &sockaddr_server.sin6_addr); // 绑定指定地址， ipv6
+
+    struct addrinfo *ai, hints;
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET6;
+    hints.ai_socktype = SOCK_STREAM;
+    // hints.ai_flags = AI; //
+    std::cout << "a" << std::endl;
+    if (getaddrinfo(ip.c_str(), "51022", &hints, &ai) != 0) {
+      perror("IN GETADDRINFO()");
+      exit(1);
+    }
+    sockaddr_server = *(struct sockaddr_in6 *)ai->ai_addr;
+    // sockaddr_server.sin6_scope_id = 3; // 指定使用的接口
+
     std::cout << ip.c_str() << std::endl;
 
     int conn_result =
