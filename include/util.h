@@ -143,7 +143,7 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
     sockaddr_server.sin6_port = htons(port);
     inet_pton(AF_INET6, ip.c_str(),
               &sockaddr_server.sin6_addr); // 绑定指定地址， ipv6
-    std::cout << "a" << std::endl;
+    std::cout << ip.c_str() << std::endl;
 
     int conn_result =
         connect(sockfd_server, (struct sockaddr *)&sockaddr_server,
