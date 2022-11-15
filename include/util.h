@@ -141,9 +141,9 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
     memset(&sockaddr_server, 0, sizeof(sockaddr_server));
     sockaddr_server.sin6_family = AF_INET6;
     sockaddr_server.sin6_port = htons(port);
-
     inet_pton(AF_INET6, ip.c_str(),
               &sockaddr_server.sin6_addr); // 绑定指定地址， ipv6
+    std::cout << "a" << std::endl;
 
     int conn_result =
         connect(sockfd_server, (struct sockaddr *)&sockaddr_server,
@@ -227,6 +227,7 @@ int connect_to_client(std::string ip, uint16_t port, int domain) {
   else // if (domain == AF_INET6) {
   {
     int sockfd_listening = socket(AF_INET6, SOCK_STREAM, 0);
+
     int option = 1;
     setsockopt(sockfd_listening, SOL_SOCKET, SO_REUSEADDR, &option,
                sizeof(option));
