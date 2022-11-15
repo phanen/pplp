@@ -184,7 +184,7 @@ int connect_to_client(std::string ip, uint16_t port, int domain) {
   if (domain == AF_INET) {
     // crete a socket
     int sockfd_listening = socket(AF_INET, SOCK_STREAM, 0);
-    int option = 1;
+    int option = 0;
     setsockopt(sockfd_listening, SOL_SOCKET, SO_REUSEADDR, &option,
                sizeof(option));
 
@@ -213,6 +213,7 @@ int connect_to_client(std::string ip, uint16_t port, int domain) {
       perror("listen");
       return -1;
     }
+
     pplp_printf("listening...............\n");
 
     // wait for a connection
