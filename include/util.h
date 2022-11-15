@@ -238,11 +238,28 @@ int connect_to_client(std::string ip, uint16_t port, int domain) {
     pplp_printf("socket created..................\n");
 
     // bind the ip address and port to a socket
+    // bind the ip address and port to a socket
     sockaddr_in6 myaddr;
+
     memset(&myaddr, 0, sizeof(myaddr));
     myaddr.sin6_family = AF_INET6;
     myaddr.sin6_port = htons(port);
+    // myaddr.sin6_addr = in6addr_any;
     inet_pton(AF_INET6, ip.c_str(), &myaddr.sin6_addr);
+
+    // struct addrinfo *ai, hints;
+    // memset(&hints, 0, sizeof(struct addrinfo));
+    // std::cout << "a" << std::endl;
+    // hints.ai_family = AF_INET6;
+    // hints.ai_socktype = SOCK_STREAM;
+    // // hints.ai_flags = AI; //
+    // std::cout << "a" << std::endl;
+    // if (getaddrinfo(ip.c_str(), "51022", &hints, &ai) != 0) {
+    //   perror("IN GETADDRINFO()");
+    //   exit(1);
+    // }
+    // myaddr = *(struct sockaddr_in6 *)ai->ai_addr;
+    // myaddr.sin6_scope_id = 3;// 指定使用的接口
 
     int ret =
         bind(sockfd_listening, (struct sockaddr *)&myaddr, sizeof(myaddr));

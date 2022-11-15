@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
   string ip = cmd_parser.get<string>("host");
   uint16_t port = cmd_parser.get<uint16_t>("port");
 
-  int domain = cmd_parser.exist("ipv6") ? AF_INET : AF_INET6;
+  int domain = cmd_parser.exist("ipv6") ? AF_INET6 : AF_INET;
 
   uint64_t xb = cmd_parser.get<uint64_t>("xb");
   uint64_t yb = cmd_parser.get<uint64_t>("yb");
