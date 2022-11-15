@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
   string ip = cmd_parser.get<string>("host");
   uint16_t port = cmd_parser.get<uint16_t>("port");
 
-  int domain = AF_INET;
+  int domain = AF_INET6;
   uint64_t xb = cmd_parser.get<uint64_t>("xb");
   uint64_t yb = cmd_parser.get<uint64_t>("yb");
   uint64_t radius = cmd_parser.get<uint64_t>("radius");
