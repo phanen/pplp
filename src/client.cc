@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
   // int domain = AF_INET6; // cmd_parser.exist("ipv4") ? AF_INET : AF_INET6;
 
   int domain = cmd_parser.exist("ipv6") ? AF_INET6 : AF_INET;
-  cout << boolalpha << cmd_parser.exist("ipv6") << endl;
+  // cout << boolalpha << cmd_parser.exist("ipv6") << endl;
   uint64_t xa = cmd_parser.get<uint64_t>("xa");
   uint64_t ya = cmd_parser.get<uint64_t>("ya");
   uint64_t radius = cmd_parser.get<uint64_t>("radius");

@@ -99,7 +99,7 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
   if (domain == AF_INET) {
     // create a socket for server
     int sockfd_server = socket(AF_INET, SOCK_STREAM, 0);
-    std::cout << "sockfd_server" << std::endl;
+    // std::cout << "sockfd_server" << std::endl;
 
     if (sockfd_server < 0) {
       perror("socket");
@@ -113,7 +113,7 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
     sockaddr_server.sin_port = htons(port);
     sockaddr_server.sin_addr.s_addr = inet_addr(ip.c_str());
 
-    std::cout << "sockfd_server" << std::endl;
+    // std::cout << "sockfd_server" << std::endl;
 
     int conn_result =
         connect(sockfd_server, (struct sockaddr *)&sockaddr_server,
@@ -123,7 +123,7 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
       close(sockfd_server);
       return -1;
     }
-    std::cout << "conn_result" << std::endl;
+    // std::cout << "conn_result" << std::endl;
 
     return sockfd_server;
   }    //
@@ -155,7 +155,7 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
     hints.ai_family = AF_INET6;
     hints.ai_socktype = SOCK_STREAM;
     // hints.ai_flags = AI; //
-    std::cout << "a" << std::endl;
+    // std::cout << "a" << std::endl;
     if (getaddrinfo(ip.c_str(), "51022", &hints, &ai) != 0) {
       perror("IN GETADDRINFO()");
       exit(1);
@@ -163,7 +163,7 @@ int connect_to_server(std::string ip, uint16_t port, int domain) {
     sockaddr_server = *(struct sockaddr_in6 *)ai->ai_addr;
     // sockaddr_server.sin6_scope_id = 3; // 指定使用的接口
 
-    std::cout << ip.c_str() << std::endl;
+    // std::cout << ip.c_str() << std::endl;
 
     int conn_result =
         connect(sockfd_server, (struct sockaddr *)&sockaddr_server,
@@ -272,7 +272,7 @@ int connect_to_client(std::string ip, uint16_t port, int domain) {
     hints.ai_family = AF_INET6;
     hints.ai_socktype = SOCK_STREAM;
     // hints.ai_flags = AI; //
-    std::cout << "a" << std::endl;
+    // std::cout << "a" << std::endl;
     if (getaddrinfo(ip.c_str(), "51022", &hints, &ai) != 0) {
       perror("IN GETADDRINFO()");
       exit(1);
