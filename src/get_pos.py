@@ -8,9 +8,10 @@ while True:
 
     if line.startswith('$GNRMC'):
         line = line.split(',')
-        lng = float(line[3][:2]) + float(line[3][2:]) / 60
-        lat = float(line[5][:3]) + float(line[5][3:]) / 60
-        # print("Longitude:\t", lng)
-        # print("Latitude:\t", lat)
-        print(f"-x {int(lat * 100000)} -y {int(lng * 100000)}")
+        print(line)
+        lat= float(line[3][:2]) + float(line[3][2:]) / 60
+        lng = float(line[5][:3]) + float(line[5][3:]) / 60
+        print("Latitude:\t", lat)
+        print("Longitude:\t", lng)
+        print(f"-x {int(lng * 100000)} -y {int(lat * 100000)}")
         break
