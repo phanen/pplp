@@ -11,7 +11,6 @@
 - g++/clang++
 - python3
 - termux(for android)
-- windows
 
 Build seal
 ```bash
@@ -42,10 +41,8 @@ CC=clang CXX=clang++ cmake .. -G=...
 ### Guide
 After build you will find the follow executable program in your directory:
 - `./demo` -- Local version to test the protocol
-- `./server && ./client`
-  - C/S version
-- `./ts && ./tc`
-  - Generate Benchmark in `*.csv` format.
+- `./server && ./client` -- C/S version
+- `./ts && ./tc` -- Generate Benchmark in `*.csv` format.
 
 To get manual of specific program, type:
 ```bash
@@ -76,19 +73,20 @@ To integrate it in pplp:
 
 #### build on Ubuntu on termux
 > Not sure if pplp can be directly built on termux
+
 [Modify `sources.list`](https://mirrors.tuna.tsinghua.edu.cn/help/termux/)
 ```bash
 sed -i 's@^\(deb.*stable main\)$@#\1\ndeb https://mirrors.tuna.tsinghua.edu.cn/termux/apt/termux-main stable main@' $PREFIX/etc/apt/sources.list
 apt update && apt upgrade
 ```
-ssh in termux
+ssh on termux
 ```bash
 pkg install openssh -y
 /etc/ssh/sshd_config
 cat "Port 8022" >> /etc/ssh/sshd_config # banned 1~1024 (no root...)
 sshd # For access to GPS of android (no root...)
 ```
-ssh on ubuntu (22.04 currently)
+install ubuntu (22.04 currently)
 ```bash
 pkg install proot proot-distro -y 
 proot-distro install ubuntu
@@ -99,18 +97,24 @@ cat "Port 9022" >> /etc/ssh/sshd_config
 cat "PermitRootLogin yes" >> /etc/ssh/sshd_config 
 /usr/sbin/sshd
 ```
-
-[build pplp](### Build on Linux/WSL (Debian, Ubuntu))
-
-run
+[build pplp](#build-on-linuxwsl-debian-ubuntu), then run
 ```bash
 ./client -h <ip of server> -p <port of server> $(ssh user127.0.0.1 -p 8022 "termux-location" | python3 get_pos_mobile.py)
 ```
 
-> When open service of `sshd`, you might need to `mkdir -p <something>`.
+> When open `sshd`, you might need to `mkdir -p <something>`.
+
+### frp
+[frp](https://github.com/fatedier/frp) can be helpful if you have no available public ip to run as a server.
+You may need add the following field.
+```ini
+[common]
+tls_enable=true
+```
+
 
 ### Build on Windows
-Surport only non-interactive version, so you can only
+Surport non-interactive version only, so you can only
 ```bash
 make pplp # after cmake
 ```
