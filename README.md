@@ -15,7 +15,7 @@
 Build seal
 ```bash
 sudo apt update && sudo apt upgrade
-sudo apt install git cmake clang # clang 可选, 但快
+sudo apt install git cmake clang # clang is not necessary
 git clone https://github.com/microsoft/SEAL.git
 cd SEAL
 CC=clang CXX=clang++ cmake -S . -B build
@@ -71,7 +71,7 @@ To integrate it in pplp:
 ### Build on android
 > No java or kotlin :joy:
 
-#### build on Ubuntu on termux
+#### build on fake ubuntu of termux
 > Not sure if pplp can be directly built on termux
 
 [Modify `sources.list`](https://mirrors.tuna.tsinghua.edu.cn/help/termux/)
@@ -86,7 +86,7 @@ pkg install openssh -y
 cat "Port 8022" >> /etc/ssh/sshd_config # banned 1~1024 (no root...)
 sshd # For access to GPS of android (no root...)
 ```
-install ubuntu (22.04 currently)
+install ubuntu on termux (22.04 currently)
 ```bash
 pkg install proot proot-distro -y 
 proot-distro install ubuntu
