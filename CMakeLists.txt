@@ -26,7 +26,7 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
  " ${CMAKE_MODULE_PATH}")
 
-find_package(SEAL 4.0 REQUIRED)
+find_package(SEAL 4.1 REQUIRED)
 # find_package(sodium REQUIRED)
 # set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lsodium" CACHE STRING "Set C++ Compiler Flags" FORCE)
 

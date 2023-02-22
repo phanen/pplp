@@ -1,44 +1,41 @@
 ## Introduction
-> PPLP: Privacy-Preserving Location Proximity
-面向位置保护的隐私距离计算与近邻检测
 
+PPLP: Privacy-Preserving Location Proximity
+
+(面向位置保护的隐私距离计算与近邻检测)
+
+## Requirements
+- [seal-4.1](https://github.com/microsoft/SEAL.git)
+- toolchains: cmake, g++/clang++, python3
+- termux(for android)
 
 ## Build
 
-### Requirement
-- [seal-4.0](https://github.com/microsoft/SEAL.git)
-- cmake
-- g++/clang++
-- python3
-- termux(for android)
-
-Build seal
+### Linux/WSL 
 ```bash
-sudo apt update && sudo apt upgrade
-sudo apt install git cmake clang # clang is not necessary
-git clone https://github.com/microsoft/SEAL.git
-cd SEAL
-CC=clang CXX=clang++ cmake -S . -B build
-CC=clang CXX=clang++ cmake --build build
-sudo cmake --install build
-```
-
-
-### Build on Linux/WSL (Debian, Ubuntu)
-```
 git clone https://github.com/phanen/pplp.git
 mkdir build && cd build
 CC=clang CXX=clang++ cmake -S . -B build
 CC=clang CXX=clang++ cmake --build build
 ```
+> tested on debian, ubuntu, arch
 
-Specify compiler and build toolchains
+### Android
+
+Provide a hack way to run on Android. Check FAQ.
+
+
+### Windows
+Non-interactive version only:
+```bash
+make pplp # after cmake
 ```
-CC=clang CXX=clang++ cmake .. -G=...
-```
+If you cannot build... you can try
+- Generate Makefile using `llvm-clang` and `mingw32-make`
+- Replace something in Makefile...
 
 
-### Guide
+## Usage
 After build you will find the follow executable program in your directory:
 - `./demo` -- Local version to test the protocol
 - `./server && ./client` -- C/S version
@@ -60,19 +57,48 @@ options:
   -?, --help      print this message
 ```
 
-
-### GPS support
-`python3 ./src/get_pos.py` will print cmdline flavor coordinate.
-To integrate it in pplp:
-```
+GPS support
+`python3 ./src/get_pos.py` will print cmdline flavor coordinate, integrate it in pplp by:
+```bash
 ./build/server $(python3 ./src/get_pos.py)
 ```
 
-### Build on android
-> No java or kotlin :joy:
 
-#### build on fake ubuntu of termux
-> Not sure if pplp can be directly built on termux
+## To Do
+- [x] Add serialization for Bloom Filter
+- [x] Implementing C/S demo 
+- [ ] ~~Hash function (on blind distance)~~
+- [ ] ~~Set parms of RNG (size of random number)~~
+- [ ] ~~Secure parms~~
+
+
+## FAQ
+
+How to build seal
+```bash
+git clone https://github.com/microsoft/SEAL.git
+cd SEAL
+CC=clang CXX=clang++ cmake -S . -B build
+CC=clang CXX=clang++ cmake --build build
+sudo cmake --install build
+```
+
+Want to use other toolchains?
+```bash
+CC=clang CXX=clang++ cmake .. -G=...
+```
+
+How to deploy a server in LAN?
+- Port mapping. (anyway, a host with public ip is necessary)
+- e.g. Use [frp](https://github.com/fatedier/frp). You may need add the following field.
+  ```ini
+  [common]
+  tls_enable=true
+  ```
+
+
+How to build on android?
+> The following guide help build a vm in termux. Not sure if pplp can be directly built on termux
 
 [Modify `sources.list`](https://mirrors.tuna.tsinghua.edu.cn/help/termux/)
 ```bash
@@ -103,30 +129,3 @@ cat "PermitRootLogin yes" >> /etc/ssh/sshd_config
 ```
 
 > When open `sshd`, you might need to `mkdir -p <something>`.
-
-### frp
-[frp](https://github.com/fatedier/frp) can be helpful if you have no available public ip to run as a server.
-You may need add the following field.
-```ini
-[common]
-tls_enable=true
-```
-
-
-### Build on Windows
-Surport non-interactive version only, so you can only
-```bash
-make pplp # after cmake
-```
-
-> If you cannot build... you can try
->   - Generate Makefile using `llvm-clang` and `mingw32-make`
->   - Replace something in Makefile... (I'm forgetful)
-
-
-## To Do
-- [x] Add serialization for Bloom Filter
-- [x] Implementing C/S demo 
-- [ ] ~~Hash function (on blind distance)~~
-- [ ] ~~Set parms of RNG (size of random number)~~
-- [ ] ~~Secure parms~~
